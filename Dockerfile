@@ -12,8 +12,9 @@ RUN apt-get update && \
 # Create app directory
 WORKDIR /app
 
-# Install Node dependencies
+# Install Node dependencies (all, including dev, so esbuild is available)
 COPY package*.json ./
+RUN npm install
 
 # If you have a package-lock.json, npm ci is ideal; otherwise fallback to npm install
 RUN npm ci --only=production || npm install --production

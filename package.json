@@ -3,15 +3,16 @@
   "version": "1.52.0",
   "description": "",
   "main": "index.js",
-  "scripts": {
-    "build-frontend": "esbuild public/app.js --bundle --outfile=public/bundle.js --format=iife",
-    "start": "node server.js"
-  },
+"scripts": {
+  "build-frontend": "node node_modules/esbuild/bin/esbuild public/app.js --bundle --outfile=public/bundle.js --format=iife",
+  "start": "node server.js"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "esbuild": "^0.24.0",
     "@soundtouchjs/audio-worklet": "^0.2.1",
     "express": "^5.1.0",
     "soundtouchjs": "^0.2.1",
