@@ -1,38 +1,35 @@
-# Base image with Debian (non-slim) for more reliable apt packages
+# Use Node with Debian Bookworm (has yt-dlp in apt)
 FROM node:22-bookworm
 
-# Install ffmpeg + Python + pip
+# Install ffmpeg + yt-dlp from Debian packages (NO pip)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       ffmpeg \
-      python3 \
-      python3-pip \
+      yt-dlp \
       ca-certificates && \
     rm -rf /var/lib/apt/lists/*
-
-# Install yt-dlp via pip
-RUN pip3 install --no-cache-dir yt-dlp
 
 # Create app directory
 WORKDIR /app
 
-# Install Node deps
+# Install Node dependencies
 COPY package*.json ./
-# If you DON'T have package-lock.json, change this to "npm install --production"
+
+# If you have a package-lock.json, npm ci is ideal; otherwise fallback to npm install
 RUN npm ci --only=production || npm install --production
 
-# Copy the rest of the project
+# Copy the rest of the project into the container
 COPY . .
 
-# Build frontend bundle
+# Build the frontend bundle
 RUN npm run build-frontend
 
 # Environment
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# App listens on 3000 inside the container
+# Expose the internal port
 EXPOSE 3000
 
-# Start server
+# Start the Node server
 CMD ["node", "server.js"]
