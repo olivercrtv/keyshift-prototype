@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>keyshift-prototype</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <h1 id="titleHeading">keyshift-prototype</h1>
+        <p>Search or paste a YouTube link, pick your key, and sing along.</p>
+      </header>
+
+      <main>
+                <!-- Search section -->
+        <section class="search-section">
+  <label class="field">
+    <span>Search for a song</span>
+    <div class="search-row">
+      <input
+        id="searchInput"
+        type="text"
+        placeholder="Song title, artist…"
+      />
+      <button id="searchButton" class="primary small-search">Search</button>
+    </div>
+    <div id="searchLoading" class="search-loading hidden"></div>
+  </label>
+
+  <div id="searchResults" class="search-results"></div>
+  <p class="search-disclaimer">
+    Search shows the top 3 YouTube matches. If you don’t see your song, try adding the artist name or more specific keywords.
+  </p>
+</section>
+
+</section>
+
+        <label class="field">
+          <span>YouTube URL</span>
+          <input
+            id="urlInput"
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+          />
+        </label>
+
+        <button id="loadButton" class="primary">Load &amp; Play</button>
+
+        <hr class="section-divider" />
+
+        <section class="controls">
+          <label>
+            <span>Key shift (semitones)</span>
+            <input
+              id="semitoneSlider"
+              type="range"
+              min="-12"
+              max="12"
+              value="0"
+              step="1"
+            />
+          </label>
+          <div class="semitone-readout">
+            Current shift: <span id="semitoneValue">0</span> semitones
+          </div>
+            <div class="semitone-buttons">
+    <button class="semitone-btn" data-delta="-2">-2</button>
+    <button class="semitone-btn" data-delta="-1">-1</button>
+    <button class="semitone-btn" data-delta="1">+1</button>
+    <button class="semitone-btn" data-delta="2">+2</button>
+  </div>
+</section>
+
+        <section class="status">
+          <div id="statusText">Idle</div>
+        </section>
+        
+<section class="transport">
+  <div class="transport-buttons-row">
+
+    <!-- Restart / Back to Beginning -->
+    <button id="restartButton" class="primary icon-button">
+      <span class="sr-only">Back to beginning</span>
+      <svg
+        class="transport-icon"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <!-- Vertical bar -->
+        <path d="M5 5h2v14H5z" />
+        <!-- Left-pointing triangle -->
+        <path d="M19 19L9 12l10-7v14z" />
+      </svg>
+    </button>
+
+    <!-- Play / Pause (text stays as-is for now) -->
+    <button id="playPauseButton" class="primary transport-play">
+      Play
+    </button>
+
+    <!-- Skip to End -->
+    <button id="endButton" class="primary icon-button">
+      <span class="sr-only">Skip to end</span>
+      <svg
+        class="transport-icon"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <!-- Right-pointing triangle -->
+        <path d="M5 5l10 7-10 7V5z" />
+        <!-- Vertical bar -->
+        <path d="M17 5h2v14h-2z" />
+      </svg>
+    </button>
+
+  </div>
+</section>
+
+  <div class="time-row">
+    <span id="currentTimeLabel">0:00</span>
+    <input
+      id="seekSlider"
+      type="range"
+      min="0"
+      max="100"
+      value="0"
+      step="0.1"
+    />
+    <span id="durationLabel">0:00</span>
+  </div>
+
+  <div class="volume-row">
+    <span>Vol</span>
+    <input
+      id="volumeSlider"
+      type="range"
+      min="0"
+      max="1"
+      step="0.01"
+      value="1"
+    />
+  </div>
+</section>
+
+  <hr class="section-divider" />
+
+      <!-- Piano reference -->
+      <section class="piano-section">
+  <div class="piano-header">
+    <h2 class="piano-title">Piano reference (one octave)</h2>
+    <button id="pianoModeButton" class="piano-mode-btn">Toggle</button>
+  </div>
+
+   <div class="piano-keys" id="pianoKeys">
+          <button class="piano-key white" data-midi="60">C</button>
+          <button class="piano-key sharp" data-midi="61">C♯</button>
+          <button class="piano-key white" data-midi="62">D</button>
+          <button class="piano-key sharp" data-midi="63">D♯</button>
+          <button class="piano-key white" data-midi="64">E</button>
+          <button class="piano-key white" data-midi="65">F</button>
+          <button class="piano-key sharp" data-midi="66">F♯</button>
+          <button class="piano-key white" data-midi="67">G</button>
+          <button class="piano-key sharp" data-midi="68">G♯</button>
+          <button class="piano-key white" data-midi="69">A</button>
+          <button class="piano-key sharp" data-midi="70">A♯</button>
+          <button class="piano-key white" data-midi="71">B</button>
+        </div>
+        <p class="piano-hint">
+          Tap keys to hear a simple reference tone (C4–B4).
+        </p>
+      </section>
+
+                <!-- Hidden audio element that feeds the SoundTouch worklet -->
+        <audio id="audioElement" style="display:none;"></audio>
+      </main>
+
+<footer class="app-footer">
+  <p>
+    For private educational use only.<br />
+    Built by
+    <a class="footer-link" href="https://www.instagram.com/oliver.crtv" target="_blank" rel="noopener noreferrer"><span>Oliver Trinidad</span></a>
+    © <span id="footerYear"></span>.
+  </p>
+</footer>
+
+    </div>
+
+    <script src="bundle.js"></script>
+  </body>
+</html>

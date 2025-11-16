@@ -1,0 +1,671 @@
+/* Mobile-first layout */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    sans-serif;
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+.app {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1.25rem;
+}
+
+header h1 {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+
+header p {
+  font-size: 0.9rem;
+  color: #9ca3af;
+  margin-top: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 1rem;
+}
+
+.field span {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+input[type="url"] {
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.75rem;
+  border: 1px solid #1f2937;
+  background: #020617;
+  color: #e5e7eb;
+  font-size: 0.95rem;
+}
+
+input[type="url"]:focus {
+  outline: none;
+  border-color: #38bdf8;
+}
+
+/* Greyed-out pitch controls when disabled */
+input[type='range']:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.semitone-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.primary {
+  margin-top: 0.9rem;
+  width: 100%;
+  padding: 0.8rem;
+  border-radius: 999px;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  background: #38bdf8;
+  color: #020617;
+}
+
+.primary:active {
+  transform: scale(0.98);
+}
+
+/* Animated loading style for Load & Play */
+.loading-button {
+  position: relative;
+  overflow: hidden;
+  color: #0f172a;          /* dark text so "Loading…" is readable */
+}
+
+/* Subtle static base background */
+.loading-button {
+  background-color: #60a5fa; /* same blue as normal primary, adjust if needed */
+}
+
+/* Moving highlight bar */
+.loading-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.35) 40%,
+    rgba(255, 255, 255, 0) 80%
+  );
+  transform: translateX(-100%);
+  animation: loadingStripe 1s linear infinite;
+}
+
+@keyframes loadingStripe {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.controls {
+  margin-top: 1.4rem;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  background: #020617;
+  border: 1px solid #1f2937;
+}
+
+.controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.controls span {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+input[type="range"] {
+  width: 100%;
+}
+
+.semitone-readout {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.status {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.transport {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  background: #020617;
+  border: 1px solid #1f2937;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+button.blue-btn {
+  background: #60a5fa;      /* same blue as your play button */
+  color: #000;
+}
+
+button.blue-btn:hover {
+  background: #7cb5ff;      /* slightly brighter hover */
+}
+
+button.icon-button:hover {
+  background: #d1d5db;
+}
+
+button.icon-button {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+/* Row that holds the three transport buttons */
+.transport-buttons-row {
+  display: flex;
+  align-items: center;      /* vertical-align all 3 buttons */
+  gap: 0.75rem;
+  margin-bottom: 0.8rem;
+}
+
+/* All primary buttons in this row share the same baseline size */
+.transport-buttons-row .primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;             /* same height for ALL 3 */
+  margin: 0;                /* kill any default margins */
+  line-height: 1;           /* avoid vertical text drift */
+}
+
+/* Center Play button: stretches to fill space */
+.transport-buttons-row .transport-play {
+  flex: 1;                  /* fill space between icon buttons */
+  padding: 0 1.5rem;        /* horizontal padding only */
+}
+
+/* Side icon buttons: fixed-size, same color because they also have .primary */
+.transport-buttons-row .icon-button {
+  flex: 0 0 44px;           /* fixed width, no grow/shrink */
+  width: 44px;
+  padding: 0;
+}
+
+.transport-button {
+  transition: background-color 0.15s ease;
+}
+
+.transport-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  display: block;
+  fill: currentColor; /* inherit the button text color */
+}
+
+/* Visually hidden but accessible text */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid #4b5563;
+  color: #e5e7eb;
+  border-radius: 999px;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+}
+
+/* Base transition + tap feedback for all main buttons */
+.primary,
+.search-btn,
+.transport-play,
+.icon-button,
+.semitone-btn,
+.piano-mode-btn {
+  transition:
+    background-color 0.15s ease,
+    transform 0.06s ease,
+    box-shadow 0.12s ease;
+  -webkit-tap-highlight-color: transparent; /* remove blue tap flash on mobile */
+}
+
+/* Hover: white-ish background, dark text/icon, grab cursor */
+.primary:hover,
+.search-btn:hover,
+.transport-play:hover,
+.icon-button:hover,
+.semitone-btn:hover,
+.piano-mode-btn:hover {
+  background-color: #f9fafb; /* light / white background */
+  color: #020617;            /* dark text/icon */
+  cursor: grab;
+}
+
+/* Pressed state: slight shrink + "pressed in" */
+.primary:active,
+.search-btn:active,
+.transport-play:active,
+.icon-button:active,
+.semitone-btn:active,
+.piano-mode-btn:active {
+  transform: scale(0.96) translateY(1px);
+  box-shadow: none;
+  cursor: grabbing;
+}
+
+button.small {
+  padding: 0.5rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+.time-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.time-row input[type="range"] {
+  flex: 1;
+}
+
+.volume-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  margin-top: 0.25rem;
+}
+
+.volume-row span {
+  min-width: 2.5rem;
+}
+
+.volume-row input[type="range"] {
+  flex: 1;
+}
+
+.search-section {
+  margin-bottom: 1.25rem;
+}
+
+.search-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.search-row input[type="text"] {
+  flex: 1;
+  border-radius: 999px;
+  border: 1px solid #1f2937;
+  padding: 0.7rem 0.9rem;
+  background: #020617;
+  color: #e5e7eb;
+  font-size: 0.9rem;
+}
+
+.search-row input[type="text"]::placeholder {
+  color: #6b7280;
+}
+
+button.small-search {
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+}
+
+/* Search results list */
+.search-results {
+  margin-top: 0.6rem;
+  border-radius: 0.75rem;
+  background: #020617;
+  border: 1px solid #1f2937;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.search-results.search-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Individual result item */
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.search-result-item:hover {
+  background: #0b1120;
+}
+
+.search-result-thumb {
+  width: 48px;
+  height: 27px;
+  flex-shrink: 0;
+  border-radius: 0.25rem;
+  object-fit: cover;
+  background: #111827;
+}
+
+.search-result-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-result-title {
+  font-size: 0.85rem;
+  color: #e5e7eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-result-meta {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 0.1rem;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Thin animated loading bar under search bar */
+.search-loading {
+  margin-top: 0.4rem;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1d4ed8, #60a5fa, #1d4ed8);
+  background-size: 200% 100%;
+  animation: searchLoadingAnim 1s linear infinite;
+}
+
+@keyframes searchLoadingAnim {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 200% 0%;
+  }
+}
+
+.search-disclaimer {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.piano-section {
+  margin-top: 1.5rem;
+}
+
+.piano-title {
+  font-size: 0.9rem;
+  color: #e5e7eb;
+  margin-bottom: 0.4rem;
+}
+
+.piano-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.piano-title {
+  font-size: 0.9rem;
+  color: #e5e7eb;
+  margin: 0;
+}
+
+.piano-mode-btn {
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid #1f2937;
+  background: #020617;
+  color: #e5e7eb;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.piano-mode-btn:hover {
+  background: #111827;
+}
+
+/* Highlight active key in sustain mode */
+.piano-key-active {
+  outline: 2px solid #60a5fa;
+  box-shadow: 0 0 0 1px #60a5fa;
+}
+
+.piano-keys {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.piano-key {
+  flex: 1;
+  padding: 0.6rem 0.2rem;
+  border-radius: 0.5rem;
+  border: 1px solid #1f2937;
+  font-size: 0.75rem;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-divider {
+  border: 0;
+  height: 1px;
+  background: #374151;      /* lighter so it pops against the background */
+  margin: 1.5rem 0;
+  opacity: 0.9;
+}
+
+/* Flashing status when audio is prepared */
+.status-ready {
+  color: #93c5fd;                 /* bright blue */
+  font-weight: 600;
+  animation: statusPulse 0.7s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+}
+
+.semitone-buttons {
+  margin-top: 0.4rem;
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+}
+
+.semitone-btn {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid #1f2937;
+  background: #020617;
+  color: #e5e7eb;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.semitone-btn:hover {
+  background: #1f2937;
+}
+
+/* "White" keys: light background, dark text */
+.piano-key.white {
+  background: #f9fafb;
+  color: #111827;
+}
+
+/* "Sharp" keys: dark background, light text */
+.piano-key.sharp {
+  background: #111827;
+  color: #e5e7eb;
+}
+
+/* Hover states */
+.piano-key.white:hover {
+  background: #e5e7eb;
+}
+
+.piano-key.sharp:hover {
+  background: #1f2937;
+}
+
+.piano-hint {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.app-footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #111827;
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+.app-footer a {
+  color: #93c5fd;
+  text-decoration: none;
+}
+
+.app-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Universal hover style for interactive buttons */
+.primary:hover,
+.search-btn:hover,
+.transport-play:hover,
+.icon-button:hover,
+.semitone-btn:hover,
+.piano-mode-btn:hover {
+  background-color: #f9fafb !important;
+  color: #020617 !important;
+  cursor: grab;
+}
+
+button.primary.loading-button:hover {
+  background-color: #60a5fa !important;
+  color: #0f172a !important;
+  cursor: default !important;
+}
+
+/* anchor itself has NO underline */
+.footer-link {
+  text-decoration: none !important;
+}
+
+/* underline only the text span */
+.footer-link span {
+  display: inline-block;
+  padding-bottom: 1px; /* optional: makes underline visually aligned */
+  border-bottom: 1px solid transparent;
+}
+
+/* on hover, underline only the span text */
+.footer-link:hover span {
+  border-bottom: 1px solid currentColor;
+}
+
+/* Primary button when disabled: no hover color, no grab cursor */
+.primary:disabled,
+.primary[disabled] {
+  opacity: 0.8;
+  cursor: default;
+}
+
+/* Ensure hover doesn't override disabled style */
+.primary:disabled:hover,
+.primary[disabled]:hover {
+  background-color: inherit;
+  color: inherit;
+  cursor: default;
+}
+
+/* FINAL override: disabled buttons NEVER hover or change color */
+button.primary:disabled,
+button.primary.loading-button {
+  cursor: default !important;
+  pointer-events: none !important;
+}
+
+button.primary:disabled:hover,
+button.primary.loading-button:hover {
+  background-color: #60a5fa !important; /* same as non-hover state */
+  color: #0f172a !important;
+  border-color: #60a5fa !important;
+}
+
+button.loading-button {
+  cursor: default !important;
+}
+
+/* Desktop tweaks */
+@media (min-width: 768px) {
+  .app {
+    padding-top: 2rem;
+  }
+
+  header h1 {
+    font-size: 2rem;
+  }
+}
