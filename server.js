@@ -192,6 +192,8 @@ app.get('/prepare', (req, res) => {
       '-o',
       filePath,
       url,
+      '--extractor-args', 'youtubetab:skip=webpage',
+      '--extractor-args', 'youtube:player_skip=webpage,configs;visitor_data=VISITOR_DATA_VALUE_HERE',
     ]);
 
     dlProc.stderr.on('data', (data) => {
