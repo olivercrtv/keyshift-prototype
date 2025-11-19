@@ -52,7 +52,12 @@ let activePianoMidi = null;
 let activePianoButton = null;
 
 function setStatus(text) {
-  statusText.textContent = text;
+  // Always show whether pitch engine is active
+  const suffix = pitchShiftingAvailable
+    ? ' [Pitch engine: ON]'
+    : ' [Pitch engine: OFF]';
+
+  statusText.textContent = `${text} ${suffix}`;
 
   if (text.startsWith('Audio prepared')) {
     statusText.classList.add('status-ready');
@@ -211,66 +216,98 @@ async function setupAudioContext() {
     return;
   }
 
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  if (!Ctor) {
+    console.warn('Web Audio API not supported on this device.');
+    pitchShiftingAvailable = false;
+    updatePitchUIState();
+    setStatus('Web Audio API not supported.');
+    return;
+  }
 
-  // Main gain node for master volume control
+  audioCtx = new Ctor();
+
+  // iOS often starts contexts "suspended" until a user gesture resumes it
+  try {
+    if (audioCtx.state === 'suspended') {
+      await audioCtx.resume();
+    }
+  } catch (err) {
+    console.warn('Error resuming AudioContext:', err);
+  }
+
+  // Master gain
   mainGainNode = audioCtx.createGain();
   mainGainNode.gain.value = parseFloat(volumeSlider.value) || 1;
   mainGainNode.connect(audioCtx.destination);
 
   let soundtouchSupported = false;
 
-  // Try AudioWorklet-based SoundTouch first
+  // Set up MediaElementSource only once
+  if (!audioSourceNode) {
+    audioSourceNode = audioCtx.createMediaElementSource(audioElement);
+  }
+
+  // Try to enable SoundTouch via AudioWorklet
   if (audioCtx.audioWorklet && audioCtx.audioWorklet.addModule) {
     try {
-      // IMPORTANT: absolute path so it works correctly on HTTPS + mobile
+      // Use absolute path so it works on HTTPS + mobile
       await audioCtx.audioWorklet.addModule('/soundtouch-worklet.js');
 
-      soundtouchNode = new AudioWorkletNode(audioCtx, 'soundtouch-processor');
-      soundtouchNode.parameters.get('pitchSemitones').value = currentSemitone;
-      soundtouchNode.parameters.get('tempo').value = 1.0;
-      soundtouchNode.parameters.get('rate').value = 1.0;
+      soundtouchNode = new AudioWorkletNode(audioCtx, 'soundtouch-processor', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [2],
+      });
 
-      if (!audioSourceNode) {
-        audioSourceNode = audioCtx.createMediaElementSource(audioElement);
-      }
+      const pitchParam = soundtouchNode.parameters.get('pitchSemitones');
+      const tempoParam = soundtouchNode.parameters.get('tempo');
+      const rateParam = soundtouchNode.parameters.get('rate');
+
+      if (pitchParam) pitchParam.value = currentSemitone;
+      if (tempoParam) tempoParam.value = 1.0;
+      if (rateParam) rateParam.value = 1.0;
+
+      // Rewire the graph: audioElement -> SoundTouch -> mainGain
+      audioSourceNode.disconnect();
       audioSourceNode.connect(soundtouchNode);
       soundtouchNode.connect(mainGainNode);
 
       soundtouchSupported = true;
-      console.log('SoundTouch AudioWorklet enabled, pitch shifting ON');
+      console.log('SoundTouch AudioWorklet enabled (graph: media -> SoundTouch -> gain -> out)');
     } catch (err) {
-      console.warn('SoundTouch AudioWorklet not available, falling back:', err);
-      // We’ll fall back to direct audio below
+      console.warn('SoundTouch AudioWorklet not available; falling back to direct audio:', err);
+      soundtouchNode = null;
     }
+  } else {
+    console.warn('AudioWorklet not supported on this device.');
   }
 
-  // Fallback: no AudioWorklet / SoundTouch, just connect audio directly
+  // Fallback: no SoundTouch, just connect media to main gain
   if (!soundtouchSupported) {
-    if (!audioSourceNode) {
-      audioSourceNode = audioCtx.createMediaElementSource(audioElement);
+    try {
+      audioSourceNode.disconnect();
+    } catch (e) {
+      // ignore
     }
     audioSourceNode.connect(mainGainNode);
-    soundtouchNode = null;
-    console.log('Pitch shifting disabled; using direct audio pipeline.');
   }
 
-  // CRITICAL: mute the element's own output, so we only hear the Web Audio graph
-  audioElement.muted = true;
-  audioElement.volume = 0;
+  // IMPORTANT: do NOT mute the element here — some browsers treat "muted"
+  // in ways that break MediaElementSource processing. Let the element play,
+  // and rely on the Web Audio graph for control.
+  audioElement.muted = false;
+  audioElement.volume = 1;
 
   isContextReady = true;
+  pitchShiftingAvailable = soundtouchSupported;
+  updatePitchUIState();
 
   if (soundtouchSupported) {
     setStatus('Audio context ready (pitch shifting enabled)');
   } else {
-    setStatus(
-      'Audio context ready. Pitch shifting is disabled in this environment.'
-    );
+    setStatus('Audio context ready (pitch shifting disabled on this device)');
   }
-
-  pitchShiftingAvailable = soundtouchSupported;
-  updatePitchUIState();
 }
 
 /**
