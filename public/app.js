@@ -206,95 +206,71 @@ function updatePitchUIState() {
   });
 }
 
-async function playPianoNote(midi, buttonEl) {
-  try {
-    await setupAudioContext();
-    if (audioCtx.state === 'suspended') {
-      await audioCtx.resume();
-    }
-
-    const now = audioCtx.currentTime;
-
-    // TOGGLE MODE: short blip (original behavior)
-    if (pianoMode === 'toggle') {
-      // Ensure any sustained note is stopped/cleared
-      if (activePianoOsc) {
-        stopActivePianoNote();
-      }
-
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.value = midiToFreq(midi);
-
-      const duration = 0.6;
-
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
-      gain.gain.linearRampToValueAtTime(0, now + duration);
-
-      osc.connect(gain);
-      if (mainGainNode) {
-        gain.connect(mainGainNode);
-      } else {
-        gain.connect(audioCtx.destination);
-      }
-
-      osc.start(now);
-      osc.stop(now + duration);
-      return;
-    }
-
-    // SUSTAIN MODE: toggle on/off
-    if (pianoMode === 'sustain') {
-      // If this note is already active, turn it off
-      if (activePianoOsc && activePianoMidi === midi) {
-        stopActivePianoNote();
-        return;
-      }
-
-      // Switch to a new sustained note
-      if (activePianoOsc) {
-        stopActivePianoNote();
-      }
-
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.value = midiToFreq(midi);
-
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
-      // No scheduled ramp down; sustaining
-
-      osc.connect(gain);
-      if (mainGainNode) {
-        gain.connect(mainGainNode);
-      } else {
-        gain.connect(audioCtx.destination);
-      }
-
-      osc.start(now);
-
-      activePianoOsc = osc;
-      activePianoGain = gain;
-      activePianoMidi = midi;
-
-      if (activePianoButton) {
-        activePianoButton.classList.remove('piano-key-active');
-      }
-      if (buttonEl) {
-        buttonEl.classList.add('piano-key-active');
-        activePianoButton = buttonEl;
-      }
-
-      return;
-    }
-  } catch (err) {
-    console.error('Error playing piano note:', err);
+async function setupAudioContext() {
+  if (isContextReady && audioCtx) {
+    return;
   }
+
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  // Main gain node for master volume control
+  mainGainNode = audioCtx.createGain();
+  mainGainNode.gain.value = parseFloat(volumeSlider.value) || 1;
+  mainGainNode.connect(audioCtx.destination);
+
+  let soundtouchSupported = false;
+
+  // Try AudioWorklet-based SoundTouch first
+  if (audioCtx.audioWorklet && audioCtx.audioWorklet.addModule) {
+    try {
+      // IMPORTANT: absolute path so it works correctly on HTTPS + mobile
+      await audioCtx.audioWorklet.addModule('/soundtouch-worklet.js');
+
+      soundtouchNode = new AudioWorkletNode(audioCtx, 'soundtouch-processor');
+      soundtouchNode.parameters.get('pitchSemitones').value = currentSemitone;
+      soundtouchNode.parameters.get('tempo').value = 1.0;
+      soundtouchNode.parameters.get('rate').value = 1.0;
+
+      if (!audioSourceNode) {
+        audioSourceNode = audioCtx.createMediaElementSource(audioElement);
+      }
+      audioSourceNode.connect(soundtouchNode);
+      soundtouchNode.connect(mainGainNode);
+
+      soundtouchSupported = true;
+      console.log('SoundTouch AudioWorklet enabled, pitch shifting ON');
+    } catch (err) {
+      console.warn('SoundTouch AudioWorklet not available, falling back:', err);
+      // We’ll fall back to direct audio below
+    }
+  }
+
+  // Fallback: no AudioWorklet / SoundTouch, just connect audio directly
+  if (!soundtouchSupported) {
+    if (!audioSourceNode) {
+      audioSourceNode = audioCtx.createMediaElementSource(audioElement);
+    }
+    audioSourceNode.connect(mainGainNode);
+    soundtouchNode = null;
+    console.log('Pitch shifting disabled; using direct audio pipeline.');
+  }
+
+  // CRITICAL: mute the element's own output, so we only hear the Web Audio graph
+  audioElement.muted = true;
+  audioElement.volume = 0;
+
+  isContextReady = true;
+
+  if (soundtouchSupported) {
+    setStatus('Audio context ready (pitch shifting enabled)');
+  } else {
+    setStatus(
+      'Audio context ready. Pitch shifting is disabled in this environment.'
+    );
+  }
+
+  pitchShiftingAvailable = soundtouchSupported;
+  updatePitchUIState();
 }
 
 /**
