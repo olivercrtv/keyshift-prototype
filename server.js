@@ -189,13 +189,15 @@ app.get('/prepare', (req, res) => {
     const dlProc = spawn('yt-dlp', [
       '--extractor-args', 'youtube:player_client=default',
       '--cookies', 'cookies.txt',
-      '-f',
-      'bestaudio/best',        // slightly more forgiving
-      '--no-playlist',
-      '--remote-components', 'ejs:github',
-      '-o',
-      filePath,
-      url,
+
+      '--js-runtimes', 'node',          // tell yt-dlp to use Node as JS engine
+      '--remote-components', 'ejs:github', // allow downloading EJS scripts if needed
+
+      '-N', '1',                        // avoid concurrency issues on some hosts
+      '-f', 'bestaudio/best',           // “bestaudio” or fallback to “best” if needed
+      '--no-playlist',                  // just in case a playlist URL slips in
+      '-o', filePath,
+  url,
     ]);
 
     dlProc.stderr.on('data', (data) => {
