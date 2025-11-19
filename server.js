@@ -23,6 +23,8 @@ const os = require('os');
 const crypto = require('crypto');
 const pkg = require('./package.json');
 
+const YT_SEARCH_ENDPOINT = 'https://www.googleapis.com/youtube/v3/search';
+
 // --- App setup ---
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -84,72 +86,58 @@ const searchCache = Object.create(null);
 const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 // /search: search YouTube for songs using yt-dlp's ytsearch3
-app.get('/search', (req, res) => {
-  const query = (req.query.q || '').trim();
-  if (!query) {
+app.get('/api/search', async (req, res) => {
+  const rawQuery = (req.query.q || '').trim();
+  if (!rawQuery) {
     return res.status(400).json({ error: 'Missing search query.' });
   }
 
-  // Serve from cache if recent
-  const cached = searchCache[query];
-  if (cached && Date.now() - cached.timestamp < SEARCH_CACHE_TTL_MS) {
-    console.log('Search cache hit for:', query);
-    return res.json({ results: cached.results });
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) {
+    console.error('YOUTUBE_API_KEY is not set on the server.');
+    return res.status(500).json({ error: 'Search is not configured on this server.' });
   }
 
-  console.log('Search request (fresh):', query);
+  try {
+    const url = new URL(YT_SEARCH_ENDPOINT);
+    url.searchParams.set('key', apiKey);
+    url.searchParams.set('part', 'snippet');
+    url.searchParams.set('type', 'video');
+    url.searchParams.set('maxResults', '3'); // top 3, matches your UI text
+    url.searchParams.set('q', rawQuery);
 
-  const searchSpec = `ytsearch3:${query}`;
-  const yt = spawn('yt-dlp', ['-J', searchSpec]);
-
-  let stdout = '';
-  let stderr = '';
-
-  yt.stdout.on('data', (data) => {
-    stdout += data.toString();
-  });
-
-  yt.stderr.on('data', (data) => {
-    stderr += data.toString();
-  });
-
-  yt.on('close', (code) => {
-    if (code !== 0) {
-      console.error('yt-dlp search error:', stderr);
-      return res.status(500).json({ error: 'Search failed.' });
+    console.log('YouTube API search:', rawQuery);
+    const response = await fetch(url);
+    if (!response.ok) {
+      const text = await response.text();
+      console.error('YouTube API error:', response.status, text);
+      return res.status(502).json({ error: 'YouTube search failed.' });
     }
 
-    try {
-      const data = JSON.parse(stdout);
-      const entries = data.entries || [];
+    const data = await response.json();
+    const items = (data.items || []).map(item => {
+      const id = item.id && item.id.videoId;
+      const snippet = item.snippet || {};
+      const title = snippet.title || 'Untitled';
+      const channel = snippet.channelTitle || 'Unknown channel';
+      const thumbnail =
+        (snippet.thumbnails && snippet.thumbnails.default && snippet.thumbnails.default.url) ||
+        null;
 
-      const results = entries
-        .map((e) => ({
-          id: e.id,
-          title: e.title,
-          url:
-            e.webpage_url ||
-            (e.id ? `https://www.youtube.com/watch?v=${e.id}` : null),
-          duration: e.duration || null,
-          uploader: e.uploader || null,
-          thumbnail:
-            e.thumbnails && e.thumbnails.length
-              ? e.thumbnails[e.thumbnails.length - 1].url
-              : null,
-        }))
-        .filter((r) => r.url);
-
-      searchCache[query] = {
-        results,
-        timestamp: Date.now(),
+      return {
+        id,
+        title,
+        channel,
+        url: id ? `https://www.youtube.com/watch?v=${id}` : null,
+        thumbnail
       };
+    }).filter(r => r.url);
 
-      res.json({ results });
-    } catch (err) {
-      console.error('Error parsing yt-dlp search JSON:', err);
-      res.status(500).json({ error: 'Failed to parse search results.' });
-    }
-  });
+    res.json({ results: items });
+  } catch (err) {
+    console.error('Server search error (YouTube API):', err);
+    res.status(500).json({ error: 'Search failed.' });
+  }
 });
 
 // /prepare: download audio once, store it, return trackId + duration
