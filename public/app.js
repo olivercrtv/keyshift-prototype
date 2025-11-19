@@ -18,10 +18,138 @@ const volumeSlider = document.getElementById('volumeSlider');
 const restartButton = document.getElementById('restartButton');
 const endButton = document.getElementById('endButton');
 
+// --- Search elements ---
 const searchInput = document.getElementById('searchInput');
 const searchButton = document.getElementById('searchButton');
 const searchResults = document.getElementById('searchResults');
-const searchLoading = document.getElementById('searchLoading');
+const searchStatus = document.getElementById('searchStatus'); // ok if null; we'll guard it
+
+function setSearchStatus(message) {
+  if (searchStatus) {
+    searchStatus.textContent = message;
+  } else {
+    console.log('[searchStatus]', message);
+  }
+}
+
+function clearSearchResults() {
+  if (!searchResults) return;
+  searchResults.innerHTML = '';
+}
+
+function renderSearchResults(results) {
+  if (!searchResults) return;
+  clearSearchResults();
+
+  if (!results || results.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'search-empty';
+    empty.textContent = 'No results. Try a more specific title or paste a YouTube link above.';
+    searchResults.appendChild(empty);
+    return;
+  }
+
+  const list = document.createElement('ul');
+  list.className = 'search-results-list';
+
+  results.forEach((item) => {
+    const li = document.createElement('li');
+    li.className = 'search-result-item';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'search-result-button';
+    button.addEventListener('click', () => {
+      // When a result is clicked, copy URL into the main URL box and trigger load
+      const urlInput = document.getElementById('urlInput');
+      if (urlInput) {
+        urlInput.value = item.url || '';
+      }
+      if (typeof loadAndPlay === 'function') {
+        loadAndPlay();
+      } else {
+        // fallback: click the Load & Play button if available
+        const loadBtn = document.getElementById('loadButton');
+        if (loadBtn) loadBtn.click();
+      }
+    });
+
+    const title = document.createElement('div');
+    title.className = 'search-result-title';
+    title.textContent = item.title || 'Untitled';
+
+    const meta = document.createElement('div');
+    meta.className = 'search-result-meta';
+    meta.textContent = item.channel || '';
+
+    button.appendChild(title);
+    button.appendChild(meta);
+    li.appendChild(button);
+    list.appendChild(li);
+  });
+
+  searchResults.appendChild(list);
+}
+
+async function performSearch() {
+  if (!searchInput || !searchButton) {
+    console.warn('Search elements not found in DOM.');
+    return;
+  }
+
+  const query = searchInput.value.trim();
+  if (!query) {
+    setSearchStatus('Type a song title or artist to search.');
+    clearSearchResults();
+    return;
+  }
+
+  try {
+    // UI: loading state
+    searchButton.disabled = true;
+    searchButton.textContent = 'Searching…';
+    setSearchStatus('Searching (top 3 results)…');
+
+    const resp = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+    if (!resp.ok) {
+      console.error('Search HTTP error:', resp.status);
+      setSearchStatus('Search failed. Try a more specific query or paste a YouTube link.');
+      clearSearchResults();
+      return;
+    }
+
+    const data = await resp.json();
+    console.log('Search data from server:', data);
+    renderSearchResults(data.results || []);
+    setSearchStatus('Showing top 3 results. If you don’t see your song, try a more specific search.');
+
+  } catch (err) {
+    console.error('Search fetch error:', err);
+    setSearchStatus('Search failed. Check your connection or paste a YouTube link instead.');
+    clearSearchResults();
+  } finally {
+    // restore button
+    searchButton.disabled = false;
+    searchButton.textContent = 'Search';
+  }
+}
+
+// Wire up events
+if (searchButton) {
+  searchButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    performSearch();
+  });
+}
+
+if (searchInput) {
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      performSearch();
+    }
+  });
+}
 
 const semitoneButtons = document.querySelectorAll('.semitone-btn');
 
