@@ -190,10 +190,13 @@ app.get('/prepare', (req, res) => {
       '-f',
       'bestaudio',
       '-o',
-      filePath,
-      url,
+
       '--extractor-args', 'youtubetab:skip=webpage',
       '--extractor-args', 'youtube:player_skip=webpage,configs;visitor_data=VISITOR_DATA_VALUE_HERE',
+      '--extractor-args', 'youtube:player_client=default',
+      '--cookies-from-browser',
+      filePath,
+      url,
     ]);
 
     dlProc.stderr.on('data', (data) => {
