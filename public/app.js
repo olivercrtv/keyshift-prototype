@@ -326,7 +326,7 @@ async function searchYouTube(query) {
     '<div class="search-result-item"><div class="search-result-text"><span class="search-result-meta">Searching…</span></div></div>';
 
   try {
-    const res = await fetch(`/search?q=${encodeURIComponent(q)}`);
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
     if (!res.ok) {
       setStatus('Search error');
       searchResults.innerHTML =

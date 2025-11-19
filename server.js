@@ -61,6 +61,42 @@ function isYouTubeUrl(url) {
   }
 }
 
+// Use ffprobe to get the actual duration (in seconds) of a downloaded file
+function probeDurationSeconds(filePath) {
+  return new Promise((resolve) => {
+    const proc = spawn('ffprobe', [
+      '-v', 'error',
+      '-show_entries', 'format=duration',
+      '-of', 'default=noprint_wrappers=1:nokey=1',
+      filePath,
+    ]);
+
+    let out = '';
+    proc.stdout.on('data', (data) => {
+      out += data.toString();
+    });
+
+    proc.on('error', (err) => {
+      console.error('ffprobe error:', err);
+      resolve(0);
+    });
+
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        console.warn('ffprobe exited with code', code);
+        return resolve(0);
+      }
+      const raw = out.trim();
+      const seconds = parseFloat(raw);
+      if (!Number.isFinite(seconds) || seconds <= 0) {
+        resolve(0);
+      } else {
+        resolve(seconds);
+      }
+    });
+  });
+}
+
 // --- Middleware / static files ---
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -204,7 +240,7 @@ app.get('/prepare', (req, res) => {
       console.error('yt-dlp (download):', data.toString());
     });
 
-    dlProc.on('close', (dlCode) => {
+        dlProc.on('close', async (dlCode) => {
       if (dlCode !== 0) {
         console.error('yt-dlp download failed with code', dlCode);
         if (fs.existsSync(filePath)) {
@@ -213,19 +249,41 @@ app.get('/prepare', (req, res) => {
         return res.status(500).json({ error: 'Failed to download audio.' });
       }
 
-      // Register track in memory
-      tracks[trackId] = {
-        filePath,
-        duration,
-        createdAt: Date.now(),
-      };
+      try {
+        // First try ffprobe on the downloaded file
+        const probed = await probeDurationSeconds(filePath);
+        const finalDuration = (Number.isFinite(probed) && probed > 0)
+          ? probed
+          : duration; // fall back to yt-dlp JSON duration if ffprobe fails
 
-      console.log('Track prepared:', trackId, 'duration:', duration);
+        // Register track in memory
+        tracks[trackId] = {
+          filePath,
+          duration: finalDuration,
+          createdAt: Date.now(),
+        };
 
-      res.json({
-        trackId,
-        duration, // may be 0 if unknown
-      });
+        console.log('Track prepared:', trackId, 'duration:', finalDuration);
+
+        return res.json({
+          trackId,
+          duration: finalDuration,
+        });
+      } catch (err) {
+        console.error('Error probing duration:', err);
+
+        // At least register the track with whatever duration we had (possibly 0)
+        tracks[trackId] = {
+          filePath,
+          duration,
+          createdAt: Date.now(),
+        };
+
+        return res.json({
+          trackId,
+          duration,
+        });
+      }
     });
   });
 });
