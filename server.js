@@ -190,7 +190,9 @@ app.get('/prepare', (req, res) => {
       '--extractor-args', 'youtube:player_client=default',
       '--cookies', 'cookies.txt',
       '-f',
-      'bestaudio',
+      'bestaudio/best',        // slightly more forgiving
+      '--no-playlist',
+      '--remote-components', 'ejs:github',
       '-o',
       filePath,
       url,

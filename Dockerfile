@@ -10,7 +10,7 @@ RUN apt-get update && \
       python3-pip \
       ca-certificates && \
     rm -rf /var/lib/apt/lists/*
-    
+
 # Install Node.js so yt-dlp can run JavaScript for YouTube signature deciphering
 RUN apt-get update && apt-get install -y --no-install-recommends curl && \
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && \
 
 # Create a virtualenv just for yt-dlp and install latest
 RUN python3 -m venv /opt/yt-dlp-venv && \
-    /opt/yt-dlp-venv/bin/pip install --no-cache-dir yt-dlp && \
+    /opt/yt-dlp-venv/bin/pip install --no-cache-dir "yt-dlp[default]" yt-dlp-ejs && \
     ln -s /opt/yt-dlp-venv/bin/yt-dlp /usr/local/bin/yt-dlp
 
 # Create app directory
