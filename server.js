@@ -103,7 +103,7 @@ app.get('/api/search', async (req, res) => {
     url.searchParams.set('key', apiKey);
     url.searchParams.set('part', 'snippet');
     url.searchParams.set('type', 'video');
-    url.searchParams.set('maxResults', '3'); // top 3, matches your UI text
+    url.searchParams.set('maxResults', '10');
     url.searchParams.set('q', rawQuery);
 
     console.log('YouTube API search:', rawQuery);
