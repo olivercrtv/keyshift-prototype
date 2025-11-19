@@ -188,7 +188,7 @@ app.get('/prepare', (req, res) => {
 
     const dlProc = spawn('yt-dlp', [
       '--extractor-args', 'youtube:player_client=default',
-      '--cookies-from-browser', 'chrome',
+      '--cookies', 'cookies.txt',
       '-f',
       'bestaudio',
       '-o',
