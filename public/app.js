@@ -432,16 +432,21 @@ async function setupAudioContext() {
 
   let soundtouchSupported = false;
 
+  // Try AudioWorklet-based SoundTouch first
   if (audioCtx.audioWorklet && audioCtx.audioWorklet.addModule) {
     try {
-      await audioCtx.audioWorklet.addModule('soundtouch-worklet.js');
+      // IMPORTANT: absolute path so it resolves correctly on mobile + HTTPS
+      await audioCtx.audioWorklet.addModule('/soundtouch-worklet.js');
 
       soundtouchNode = new AudioWorkletNode(audioCtx, 'soundtouch-processor');
       soundtouchNode.parameters.get('pitchSemitones').value = currentSemitone;
       soundtouchNode.parameters.get('tempo').value = 1.0;
       soundtouchNode.parameters.get('rate').value = 1.0;
 
-      audioSourceNode = audioCtx.createMediaElementSource(audioElement);
+      // Only create the media source once
+      if (!audioSourceNode) {
+        audioSourceNode = audioCtx.createMediaElementSource(audioElement);
+      }
       audioSourceNode.connect(soundtouchNode);
       soundtouchNode.connect(mainGainNode);
 
@@ -449,6 +454,10 @@ async function setupAudioContext() {
       console.log('SoundTouch AudioWorklet enabled');
     } catch (err) {
       console.warn('SoundTouch AudioWorklet not available, falling back:', err);
+      // Show a hint in the UI so we know *why* it failed on mobile
+      setStatus(
+        'Audio context ready, but advanced pitch shifting is not supported in this browser.'
+      );
     }
   }
 
@@ -456,8 +465,8 @@ async function setupAudioContext() {
   if (!soundtouchSupported) {
     if (!audioSourceNode) {
       audioSourceNode = audioCtx.createMediaElementSource(audioElement);
-      audioSourceNode.connect(mainGainNode);
     }
+    audioSourceNode.connect(mainGainNode);
     soundtouchNode = null; // explicitly note that pitch shift is disabled
   }
 
@@ -467,7 +476,7 @@ async function setupAudioContext() {
     setStatus('Audio context ready (pitch shifting enabled)');
   } else {
     setStatus(
-      'Audio context ready. Pitch shifting is disabled in this environment (requires secure HTTPS to enable).'
+      'Audio context ready. Pitch shifting is disabled in this environment.'
     );
   }
 
