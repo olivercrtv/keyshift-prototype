@@ -187,7 +187,7 @@ app.get('/prepare', (req, res) => {
   console.log('Preparing track for:', url);
 
   const trackId = createTrackId();
-  const filePath = path.join(CACHE_DIR, `${trackId}.webm`);
+  const filePath = path.join(CACHE_DIR, `${trackId}.mp3`);
 
   // Step 1: get info (duration) via yt-dlp -J
   const infoProc = spawn('yt-dlp', ['-J', url]);
@@ -222,19 +222,27 @@ app.get('/prepare', (req, res) => {
     // Step 2: download bestaudio to a local file
     console.log('Downloading audio to cache:', filePath);
 
-    const dlProc = spawn('yt-dlp', [
-      '--extractor-args', 'youtube:player_client=default',
-      '--cookies', 'cookies.txt',
+    // Step 2: download & convert to MP3 once, into our cache
+console.log('Downloading audio (MP3) to cache:', filePath);
 
-      '--js-runtimes', 'node',          // tell yt-dlp to use Node as JS engine
-      '--remote-components', 'ejs:github', // allow downloading EJS scripts if needed
+const dlProc = spawn('yt-dlp', [
+  '--extractor-args', 'youtube:player_client=default',
+  '--cookies', 'cookies.txt',
 
-      '-N', '1',                        // avoid concurrency issues on some hosts
-      '-f', 'bestaudio/best',           // “bestaudio” or fallback to “best” if needed
-      '--no-playlist',                  // just in case a playlist URL slips in
-      '-o', filePath,
+  '--js-runtimes', 'node',
+  '--remote-components', 'ejs:github',
+
+  '-N', '1',
+  '--no-playlist',
+
+  // Extract audio and convert to MP3 using yt-dlp + ffmpeg
+  '--extract-audio',
+  '--audio-format', 'mp3',
+  '--audio-quality', '0',          // best quality
+
+  '-o', filePath,
   url,
-    ]);
+]);
 
     dlProc.stderr.on('data', (data) => {
       console.error('yt-dlp (download):', data.toString());
@@ -288,10 +296,9 @@ app.get('/prepare', (req, res) => {
   });
 });
 
-// /audio: stream from cached file with optional ?start=SECONDS as MP3
+// /audio: stream cached MP3 file, with HTTP Range support for fast seeking
 app.get('/audio', (req, res) => {
   const trackId = req.query.trackId;
-  const start = parseFloat(req.query.start || '0') || 0;
 
   if (!trackId || !tracks[trackId]) {
     return res.status(404).json({ error: 'Unknown or expired trackId.' });
@@ -299,90 +306,63 @@ app.get('/audio', (req, res) => {
 
   const { filePath } = tracks[trackId];
 
-  console.log('Streaming audio from cache:', trackId, 'start:', start);
-
-  const ffArgs = [];
-
-  if (start > 0) {
-    ffArgs.push('-ss', String(start));
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'Cached audio file not found.' });
   }
 
-  // Encode to MP3 for maximum compatibility (desktop + mobile)
-  ffArgs.push(
-    '-i',
-    filePath,
-    '-vn',
-    '-f',
-    'mp3',
-    '-acodec',
-    'libmp3lame',
-    '-b:a',
-    '192k',
-    'pipe:1'
-  );
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
+  const range = req.headers.range;
 
-  const ff = spawn('ffmpeg', ffArgs);
+  // If client requested a byte range (most modern browsers do)
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 
-  let headersSent = false;
-
-  res.on('error', (err) => {
-    if (err && err.code === 'EPIPE') {
-      console.warn('Client disconnected (EPIPE) during /audio stream');
-    } else {
-      console.error('Response error:', err);
-    }
-  });
-
-  ff.stdout.on('data', (chunk) => {
-    if (res.destroyed || res.writableEnded) {
-      return; // client is gone
+    if (Number.isNaN(start) || Number.isNaN(end) || start > end) {
+      return res.status(416).end();
     }
 
-    if (!headersSent) {
-      headersSent = true;
-      res.setHeader('Content-Type', 'audio/mpeg');
-    }
+    const chunkSize = end - start + 1;
+    const fileStream = fs.createReadStream(filePath, { start, end });
 
-    try {
-      res.write(chunk);
-    } catch (err) {
-      if (err.code === 'EPIPE') {
-        console.warn('EPIPE while writing audio to client.');
-      } else {
-        console.error('Error writing audio chunk:', err);
-      }
-    }
-  });
+    res.writeHead(206, {
+      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': chunkSize,
+      'Content-Type': 'audio/mpeg',
+    });
 
-  ff.stderr.on('data', (data) => {
-    console.error('ffmpeg:', data.toString());
-  });
-
-  ff.on('error', (err) => {
-    console.error('Failed to start ffmpeg:', err);
-    if (!headersSent && !res.headersSent) {
-      res.status(500).json({ error: 'Failed to start ffmpeg.' });
-    } else {
-      res.destroy(err);
-    }
-  });
-
-  ff.on('close', (code) => {
-    console.log('ffmpeg exited with code', code);
-    if (!headersSent) {
+    fileStream.on('error', (err) => {
+      console.error('Error streaming audio file:', err);
       if (!res.headersSent) {
-        if (code === 0) {
-          res.end();
-        } else {
-          res.status(500).json({ error: 'Failed to process audio.' });
-        }
+        res.status(500).end();
+      } else {
+        res.destroy(err);
       }
-    } else {
-      if (!res.writableEnded) {
-        res.end();
+    });
+
+    fileStream.pipe(res);
+  } else {
+    // No Range header: send entire file
+    res.writeHead(200, {
+      'Content-Length': fileSize,
+      'Content-Type': 'audio/mpeg',
+    });
+
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.on('error', (err) => {
+      console.error('Error streaming full audio file:', err);
+      if (!res.headersSent) {
+        res.status(500).end();
+      } else {
+        res.destroy(err);
       }
-    }
-  });
+    });
+
+    fileStream.pipe(res);
+  }
 });
 
 // --- Simple cache cleanup: delete tracks older than 1 hour ---
