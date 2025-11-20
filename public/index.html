@@ -69,12 +69,19 @@
             Current shift: <span id="semitoneValue">0</span> semitones
           </div>
             <div class="semitone-buttons">
-    <button class="semitone-btn" data-delta="-2">-2</button>
-    <button class="semitone-btn" data-delta="-1">-1</button>
-    <button class="semitone-btn" data-delta="1">+1</button>
-    <button class="semitone-btn" data-delta="2">+2</button>
-  </div>
+  <button class="semitone-btn" data-delta="-2">-2</button>
+  <button class="semitone-btn" data-delta="-1">-1</button>
+
+  <button id="resetSemitoneButton" class="semitone-reset-btn">
+    Original key
+  </button>
+
+  <button class="semitone-btn" data-delta="1">+1</button>
+  <button class="semitone-btn" data-delta="2">+2</button>
+</div>
 </section>
+
+<div id="keyMemoryBadge" class="key-memory-badge">Remembered your key 🎵</div>
 
         <section class="status">
           <div id="statusText">Idle</div>

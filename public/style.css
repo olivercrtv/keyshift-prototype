@@ -659,6 +659,64 @@ button.loading-button {
   cursor: default !important;
 }
 
+.semitone-buttons {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+/* Original +/- buttons */
+.semitone-btn {
+  padding: 0.4rem 0.7rem;
+  min-width: 2.4rem;
+}
+
+/* Make the “Original key” button a bit wider */
+.semitone-reset-btn {
+  padding: 0.4rem 1.1rem;
+  border-radius: 999px;
+  font-weight: 600;
+  border: none;
+  background: #2563eb;        /* same blue as other primary buttons */
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.08s ease;
+}
+
+.semitone-reset-btn:hover {
+  background: #1d4ed8;
+}
+
+.semitone-reset-btn:active {
+  transform: scale(0.97);
+}
+
+.key-memory-badge {
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.key-memory-badge.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+button,
+input[type="range"] {
+  touch-action: manipulation;
+}
+
 /* Desktop tweaks */
 @media (min-width: 768px) {
   .app {

@@ -19,8 +19,11 @@ const restartButton = document.getElementById('restartButton');
 const endButton = document.getElementById('endButton');
 
 const semitoneButtons = document.querySelectorAll('.semitone-btn');
+const resetSemitoneButton = document.getElementById('resetSemitoneButton');
 
 const pianoModeButton = document.getElementById('pianoModeButton');
+
+const keyMemoryBadge = document.getElementById('keyMemoryBadge');
 
 let audioCtx = null;
 let soundtouchNode = null;
@@ -52,6 +55,9 @@ let activePianoButton = null;
 
 let pianoCtx = null;
 let pianoMasterGain = null;
+
+let loadingTimer = null;
+let loadingSeconds = 0;
 
 function setStatus(text) {
   // Always show whether pitch engine is active
@@ -162,7 +168,7 @@ function stopActivePianoNote() {
   }
 }
 
-async function playPianoNote(midi, buttonEl) {
+function playPianoNote(midi, buttonEl) {
   try {
     const Ctor = window.AudioContext || window.webkitAudioContext;
     if (!Ctor) {
@@ -170,21 +176,20 @@ async function playPianoNote(midi, buttonEl) {
       return;
     }
 
-    // Create a dedicated AudioContext for the piano if needed
     if (!pianoCtx) {
       pianoCtx = new Ctor();
       pianoMasterGain = pianoCtx.createGain();
-      pianoMasterGain.gain.value = 0.25; // overall piano volume
+      pianoMasterGain.gain.value = 0.5; // (also where you bump the volume)
       pianoMasterGain.connect(pianoCtx.destination);
     }
 
+    // Try to resume, but don't wait
     if (pianoCtx.state === 'suspended') {
-      await pianoCtx.resume();
+      pianoCtx.resume().catch(() => {});
     }
 
     const now = pianoCtx.currentTime;
 
-    // --- TOGGLE MODE: short "blip" note ---
     if (pianoMode === 'toggle') {
       const osc = pianoCtx.createOscillator();
       const gain = pianoCtx.createGain();
@@ -205,15 +210,12 @@ async function playPianoNote(midi, buttonEl) {
       return;
     }
 
-    // --- SUSTAIN MODE: toggle on/off ---
     if (pianoMode === 'sustain') {
-      // If this note is already active, turn it off
       if (activePianoOsc && activePianoMidi === midi) {
         stopActivePianoNote();
         return;
       }
 
-      // Switch to a new sustained note
       if (activePianoOsc) {
         stopActivePianoNote();
       }
@@ -226,7 +228,6 @@ async function playPianoNote(midi, buttonEl) {
 
       gain.gain.setValueAtTime(0, now);
       gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
-      // No ramp down; sustain until stopped
 
       osc.connect(gain);
       gain.connect(pianoMasterGain);
@@ -278,17 +279,30 @@ function midiToFreq(midi) {
 function setLoading(isLoading) {
   if (isLoading) {
     loadButton.disabled = true;
-    loadButton.textContent = 'Loading…';
     loadButton.classList.add('loading-button');
     if (searchResults) {
       searchResults.classList.add('search-disabled');
     }
+
+    loadingSeconds = 0;
+    loadButton.textContent = 'Loading… (0s)';
+
+    if (loadingTimer) clearInterval(loadingTimer);
+    loadingTimer = setInterval(() => {
+      loadingSeconds += 1;
+      loadButton.textContent = `Loading… (${loadingSeconds}s)`;
+    }, 1000);
   } else {
     loadButton.disabled = false;
-    loadButton.textContent = 'Load & Play';
     loadButton.classList.remove('loading-button');
+    loadButton.textContent = 'Load & Play';
     if (searchResults) {
       searchResults.classList.remove('search-disabled');
+    }
+
+    if (loadingTimer) {
+      clearInterval(loadingTimer);
+      loadingTimer = null;
     }
   }
 }
@@ -591,6 +605,7 @@ currentTrackId = data.trackId;
       if (typeof saved === 'number') {
         semitoneSlider.value = String(saved);
         onSemitoneChange(saved);
+          flashKeyMemoryBadge();   // <--- add this line
       } else {
         // Default to 0 if no saved value
         semitoneSlider.value = '0';
@@ -643,6 +658,14 @@ function onSemitoneChange(value) {
   if (currentVideoId) {
     storeSemitone(currentVideoId, value);
   }
+}
+
+function flashKeyMemoryBadge() {
+  if (!keyMemoryBadge) return;
+  keyMemoryBadge.classList.add('visible');
+  setTimeout(() => {
+    keyMemoryBadge.classList.remove('visible');
+  }, 1600);
 }
 
 // --- UI wiring ---
@@ -717,6 +740,13 @@ semitoneButtons.forEach((btn) => {
     onSemitoneChange(next);
   });
 });
+
+if (resetSemitoneButton) {
+  resetSemitoneButton.addEventListener('click', () => {
+    semitoneSlider.value = '0';
+    onSemitoneChange(0);
+  });
+}
 
 // Play / Pause button
 playPauseButton.addEventListener('click', async () => {
@@ -864,6 +894,21 @@ function decodeHtmlEntities(str) {
 
 // Auto-update footer year
 document.getElementById('footerYear').textContent = new Date().getFullYear();
+
+document.addEventListener('keydown', (e) => {
+  // Ignore when typing in an input or textarea
+  const target = e.target;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+    return;
+  }
+
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (playPauseButton) {
+      playPauseButton.click();
+    }
+  }
+});
 
 // Initial UI state
 setStatus('Idle');
