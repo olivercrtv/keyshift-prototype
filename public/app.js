@@ -41,7 +41,6 @@ const SEMITONE_STORAGE_PREFIX = 'keyshift:semitones:';
 let currentLoadToken = 0;
 
 let trackDuration = 0;      // seconds
-let currentOffset = 0;      // where this stream starts, in seconds
 let isUserSeeking = false;
 let isSeekInFlight = false;
 
@@ -50,6 +49,9 @@ let activePianoOsc = null;
 let activePianoGain = null;
 let activePianoMidi = null;
 let activePianoButton = null;
+
+let pianoCtx = null;
+let pianoMasterGain = null;
 
 function setStatus(text) {
   // Always show whether pitch engine is active
@@ -129,7 +131,7 @@ function storeSemitone(videoId, semitone) {
 }
 
 function stopActivePianoNote() {
-  if (!audioCtx) {
+  if (!pianoCtx) {
     activePianoOsc = null;
     activePianoGain = null;
     activePianoMidi = null;
@@ -140,7 +142,7 @@ function stopActivePianoNote() {
     return;
   }
 
-  const now = audioCtx.currentTime;
+  const now = pianoCtx.currentTime;
 
   if (activePianoGain) {
     activePianoGain.gain.cancelScheduledValues(now);
@@ -157,6 +159,94 @@ function stopActivePianoNote() {
   if (activePianoButton) {
     activePianoButton.classList.remove('piano-key-active');
     activePianoButton = null;
+  }
+}
+
+async function playPianoNote(midi, buttonEl) {
+  try {
+    const Ctor = window.AudioContext || window.webkitAudioContext;
+    if (!Ctor) {
+      console.warn('Web Audio not supported for piano.');
+      return;
+    }
+
+    // Create a dedicated AudioContext for the piano if needed
+    if (!pianoCtx) {
+      pianoCtx = new Ctor();
+      pianoMasterGain = pianoCtx.createGain();
+      pianoMasterGain.gain.value = 0.25; // overall piano volume
+      pianoMasterGain.connect(pianoCtx.destination);
+    }
+
+    if (pianoCtx.state === 'suspended') {
+      await pianoCtx.resume();
+    }
+
+    const now = pianoCtx.currentTime;
+
+    // --- TOGGLE MODE: short "blip" note ---
+    if (pianoMode === 'toggle') {
+      const osc = pianoCtx.createOscillator();
+      const gain = pianoCtx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.value = midiToFreq(midi);
+
+      const duration = 0.6;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
+      gain.gain.linearRampToValueAtTime(0, now + duration);
+
+      osc.connect(gain);
+      gain.connect(pianoMasterGain);
+
+      osc.start(now);
+      osc.stop(now + duration);
+      return;
+    }
+
+    // --- SUSTAIN MODE: toggle on/off ---
+    if (pianoMode === 'sustain') {
+      // If this note is already active, turn it off
+      if (activePianoOsc && activePianoMidi === midi) {
+        stopActivePianoNote();
+        return;
+      }
+
+      // Switch to a new sustained note
+      if (activePianoOsc) {
+        stopActivePianoNote();
+      }
+
+      const osc = pianoCtx.createOscillator();
+      const gain = pianoCtx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.value = midiToFreq(midi);
+
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
+      // No ramp down; sustain until stopped
+
+      osc.connect(gain);
+      gain.connect(pianoMasterGain);
+
+      osc.start(now);
+
+      activePianoOsc = osc;
+      activePianoGain = gain;
+      activePianoMidi = midi;
+
+      if (activePianoButton) {
+        activePianoButton.classList.remove('piano-key-active');
+      }
+      if (buttonEl) {
+        buttonEl.classList.add('piano-key-active');
+        activePianoButton = buttonEl;
+      }
+    }
+  } catch (err) {
+    console.error('Error playing piano note:', err);
   }
 }
 
@@ -209,105 +299,6 @@ function updatePitchUIState() {
   semitoneButtons.forEach((btn) => {
     btn.disabled = disabled;
   });
-}
-
-async function setupAudioContext() {
-  if (isContextReady && audioCtx) {
-    return;
-  }
-
-  const Ctor = window.AudioContext || window.webkitAudioContext;
-  if (!Ctor) {
-    console.warn('Web Audio API not supported on this device.');
-    pitchShiftingAvailable = false;
-    updatePitchUIState();
-    setStatus('Web Audio API not supported.');
-    return;
-  }
-
-  audioCtx = new Ctor();
-
-  // iOS often starts contexts "suspended" until a user gesture resumes it
-  try {
-    if (audioCtx.state === 'suspended') {
-      await audioCtx.resume();
-    }
-  } catch (err) {
-    console.warn('Error resuming AudioContext:', err);
-  }
-
-  // Master gain
-  mainGainNode = audioCtx.createGain();
-  mainGainNode.gain.value = parseFloat(volumeSlider.value) || 1;
-  mainGainNode.connect(audioCtx.destination);
-
-  let soundtouchSupported = false;
-
-  // Set up MediaElementSource only once
-  if (!audioSourceNode) {
-    audioSourceNode = audioCtx.createMediaElementSource(audioElement);
-  }
-
-  // Try to enable SoundTouch via AudioWorklet
-  if (audioCtx.audioWorklet && audioCtx.audioWorklet.addModule) {
-    try {
-      // Use absolute path so it works on HTTPS + mobile
-      await audioCtx.audioWorklet.addModule('/soundtouch-worklet.js');
-
-      soundtouchNode = new AudioWorkletNode(audioCtx, 'soundtouch-processor', {
-        numberOfInputs: 1,
-        numberOfOutputs: 1,
-        outputChannelCount: [2],
-      });
-
-      const pitchParam = soundtouchNode.parameters.get('pitchSemitones');
-      const tempoParam = soundtouchNode.parameters.get('tempo');
-      const rateParam = soundtouchNode.parameters.get('rate');
-
-      if (pitchParam) pitchParam.value = currentSemitone;
-      if (tempoParam) tempoParam.value = 1.0;
-      if (rateParam) rateParam.value = 1.0;
-
-      // Rewire the graph: audioElement -> SoundTouch -> mainGain
-      audioSourceNode.disconnect();
-      audioSourceNode.connect(soundtouchNode);
-      soundtouchNode.connect(mainGainNode);
-
-      soundtouchSupported = true;
-      console.log('SoundTouch AudioWorklet enabled (graph: media -> SoundTouch -> gain -> out)');
-    } catch (err) {
-      console.warn('SoundTouch AudioWorklet not available; falling back to direct audio:', err);
-      soundtouchNode = null;
-    }
-  } else {
-    console.warn('AudioWorklet not supported on this device.');
-  }
-
-  // Fallback: no SoundTouch, just connect media to main gain
-  if (!soundtouchSupported) {
-    try {
-      audioSourceNode.disconnect();
-    } catch (e) {
-      // ignore
-    }
-    audioSourceNode.connect(mainGainNode);
-  }
-
-  // IMPORTANT: do NOT mute the element here — some browsers treat "muted"
-  // in ways that break MediaElementSource processing. Let the element play,
-  // and rely on the Web Audio graph for control.
-  audioElement.muted = false;
-  audioElement.volume = 1;
-
-  isContextReady = true;
-  pitchShiftingAvailable = soundtouchSupported;
-  updatePitchUIState();
-
-  if (soundtouchSupported) {
-    setStatus('Audio context ready (pitch shifting enabled)');
-  } else {
-    setStatus('Audio context ready (pitch shifting disabled on this device)');
-  }
 }
 
 /**
@@ -539,81 +530,6 @@ async function prepareTrack(url) {
 }
 
 /**
- * Start playback from a specific offset (seconds) using cached track.
- */
-async function playFromOffset(offsetSeconds) {
-  if (!currentTrackId) {
-    alert('No prepared track. Click "Load & Play" first.');
-    return;
-  }
-
-  try {
-    await setupAudioContext();
-    if (audioCtx.state === 'suspended') {
-      await audioCtx.resume();
-    }
-
-    currentOffset = Math.max(0, offsetSeconds || 0);
-
-    // Update UI to reflect starting point
-    if (!isUserSeeking && trackDuration > 0) {
-      const pct = (currentOffset / trackDuration) * 100;
-      seekSlider.value = pct;
-      currentTimeLabel.textContent = formatTime(currentOffset);
-    }
-    playPauseButton.textContent = 'Pause';
-
-    const sourceUrl = `/audio?trackId=${encodeURIComponent(
-      currentTrackId
-    )}&start=${currentOffset}`;
-
-    audioElement.src = sourceUrl;
-
-    setStatus('Buffering & playing from new position…');
-
-    // Handle autoplay / gesture-related errors explicitly
-    try {
-      await audioElement.play();
-    } catch (err) {
-      const msg = err && err.message ? err.message : '';
-      if (
-        err.name === 'NotAllowedError' ||
-        msg.toLowerCase().includes('gesture') ||
-        msg.toLowerCase().includes('user interaction')
-      ) {
-        // Browser requires a manual Play tap
-        setStatus('Audio is ready. Tap Play to start on this device.');
-        playPauseButton.textContent = 'Play';
-        return;
-      }
-      throw err;
-    }
-
-    if (soundtouchNode) {
-      const param = soundtouchNode.parameters.get('pitchSemitones');
-      if (param) param.value = currentSemitone;
-    }
-
-    isUserSeeking = false;
-    setStatus(`Playing (shift: ${currentSemitone} semitones)`);
-
-  } catch (err) {
-    console.error('Error in playFromOffset:', err);
-    const msg = err && err.message ? err.message : '';
-    if (
-      err.name === 'AbortError' ||
-      msg.includes('The play() request was interrupted') ||
-      msg.includes('interrupted by a new load request')
-    ) {
-      setStatus('Seek interrupted.');
-    } else {
-      alert('There was a problem loading this track position.');
-      setStatus('Error loading audio');
-    }
-  }
-}
-
-/**
  * Load & play from the beginning: prepare track then start at 0.
  */
 async function loadAndPlay(url) {
@@ -633,7 +549,6 @@ async function loadAndPlay(url) {
   // Reset state
   currentTrackId = null;
   trackDuration = 0;
-  currentOffset = 0;
   audioElement.pause();
   audioElement.removeAttribute('src');
   seekSlider.value = 0;
@@ -664,6 +579,11 @@ currentTrackId = data.trackId;
     if (trackDuration > 0) {
       durationLabel.textContent = formatTime(trackDuration);
     }
+
+
+    // NEW: set the audio src once
+    audioElement.src = `/audio?trackId=${encodeURIComponent(currentTrackId)}`;
+    audioElement.currentTime = 0;
 
     // Restore saved semitone for this video if available
     if (currentVideoId) {
@@ -812,12 +732,15 @@ playPauseButton.addEventListener('click', async () => {
       await audioCtx.resume();
     }
 
-    // First play after prepare: no src yet => start from currentOffset (usually 0)
-    if (!audioElement.src) {
-      await playFromOffset(currentOffset || 0);
-      playPauseButton.textContent = 'Pause';
-      return;
-    }
+    // First play after prepare: ensure src exists
+if (!audioElement.src) {
+  if (!currentTrackId) {
+    alert('Load a song first.');
+    return;
+  }
+  audioElement.src = `/audio?trackId=${encodeURIComponent(currentTrackId)}`;
+  audioElement.currentTime = 0;
+}
 
     // Toggle pause / resume
     if (audioElement.paused) {
@@ -839,28 +762,25 @@ restartButton.addEventListener('click', () => {
 
   seekSlider.value = 0;
   currentTimeLabel.textContent = '0:00';
-
-  playFromOffset(0);
+  audioElement.currentTime = 0;
 });
 
 endButton.addEventListener('click', () => {
   if (!currentTrackId || trackDuration <= 0) return;
 
-  const target = Math.max(0, trackDuration - 1);  // last playable second
+  const target = Math.max(0, trackDuration - 1);
   const pct = (target / trackDuration) * 100;
 
   seekSlider.value = pct;
   currentTimeLabel.textContent = formatTime(target);
-
-  playFromOffset(target);
+  audioElement.currentTime = target;
 });
 
 // Audio element events: update progress/time based on absolute position
 audioElement.addEventListener('timeupdate', () => {
   if (isUserSeeking) return;
 
-  const relative = audioElement.currentTime || 0;        // seconds since this stream started
-  const absolute = currentOffset + relative;             // seconds from start of track
+  const absolute = audioElement.currentTime || 0;
 
   currentTimeLabel.textContent = formatTime(absolute);
 
@@ -912,7 +832,9 @@ function finishSeek() {
   const pct = parseFloat(seekSlider.value) || 0;
   const targetAbs = (pct / 100) * trackDuration;
   isUserSeeking = false;
-  playFromOffset(targetAbs);
+
+  // Tell the browser to seek within the MP3 we've already loaded
+  audioElement.currentTime = targetAbs;
 }
 
 // Mouse & touch end
