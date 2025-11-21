@@ -397,7 +397,7 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-// /prepare: download audio once, store it, return trackId + duration
+// /prepare: download audio once, store it, return trackId + duration + key
 app.get('/prepare', (req, res) => {
   const url = req.query.url;
 
@@ -440,25 +440,33 @@ app.get('/prepare', (req, res) => {
       }
     }
 
-        // Step 2: download & convert to MP3 once, into our cache
+    // Step 2: download & convert to MP3 once, into our cache
     console.log('Downloading audio (MP3) to cache:', filePath);
 
     const dlProc = spawn('yt-dlp', [
-      '--extractor-args', 'youtube:player_client=default',
-      '--cookies', 'cookies.txt',
+      '--extractor-args',
+      'youtube:player_client=default',
+      '--cookies',
+      'cookies.txt',
 
-      '--js-runtimes', 'node',
-      '--remote-components', 'ejs:github',
+      '--js-runtimes',
+      'node',
+      '--remote-components',
+      'ejs:github',
 
-      '-N', '1',
+      '-N',
+      '1',
       '--no-playlist',
 
       // Extract audio and convert to MP3 using yt-dlp + ffmpeg
       '--extract-audio',
-      '--audio-format', 'mp3',
-      '--audio-quality', '0', // best quality
+      '--audio-format',
+      'mp3',
+      '--audio-quality',
+      '5', // good quality
 
-      '-o', filePath,
+      '-o',
+      filePath,
       url,
     ]);
 
