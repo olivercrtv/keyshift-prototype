@@ -671,23 +671,15 @@ button.loading-button {
   min-width: 2.4rem;
 }
 
+/* Use same base style as .semitone-btn; this just makes it a hair wider */
 .semitone-reset-btn {
-  padding: 0.4rem 0.7rem;
-  min-width: 2.6rem;
-  border-radius: 0.4rem;
-  background: #2563eb; 
-  color: #fff;
-  border: none;
-  cursor: pointer;
-  transition: background 0.15s ease, transform 0.08s ease;
+  min-width: 3.1rem; /* optional: tweak or remove entirely */
 }
 
-.semitone-reset-btn:hover {
-  background: #1e4ed8;
-}
-
-.semitone-reset-btn:active {
-  transform: scale(0.96);
+.piano-hint {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin-top: 0.3rem;
 }
 
 .key-memory-badge {
