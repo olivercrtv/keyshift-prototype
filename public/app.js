@@ -700,21 +700,14 @@ function onSemitoneChange(value) {
   if (currentVideoId) {
     storeSemitone(currentVideoId, value);
   }
+
+  // Recompute the "Current playback key" line
+  updateDetectedKey(currentDetectedKey);
 }
 
 function flashKeyMemoryBadge() {
   if (!keyMemoryBadge) return;
-
-  // Ensure it's visible
   keyMemoryBadge.classList.add('visible');
-
-  // Add a one-shot shimmer animation class
-  keyMemoryBadge.classList.add('shimmer-once');
-
-  // Remove the shimmer class after animation, but keep it visible
-  setTimeout(() => {
-    keyMemoryBadge.classList.remove('shimmer-once');
-  }, 900);
 }
 
 // --- UI wiring ---
@@ -1025,6 +1018,9 @@ function setupTooltipTrigger(triggerEl) {
     tooltipEl.classList.remove('visible');
   });
 }
+
+// Hook up the key-memory tooltip to the inner link span
+setupTooltipTrigger(document.querySelector('.key-memory-link'));
 
 setupTooltipTrigger(document.getElementById('keyMemoryBadge'));
 

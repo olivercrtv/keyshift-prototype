@@ -77,60 +77,35 @@ input[type='range']:disabled {
 
 .detected-key-label {
   cursor: pointer;
-  text-decoration: underline dotted;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
 }
 
-.detected-key-tooltip {
-  display: none;
-  margin-top: 0.25rem;
-  font-size: 0.8rem;
-  line-height: 1.4;
-  max-width: 26rem;
-  background: #111827;
-  color: #e5e7eb;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
+/* Any element that should show a dotted "info" underline */
+.tooltip-trigger {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  border-bottom: none;
+  cursor: pointer;
 }
 
 .detected-key-tooltip.visible {
   display: block;
 }
 
-/* Any element that should show a dotted "info" underline */
-.tooltip-trigger {
-  border-bottom: 1px dotted currentColor;
-  text-decoration: none;
-  cursor: pointer;
-}
-
 .key-memory-inline {
-  margin-left: 0.35rem;
+  margin-left: 0.5rem;
   font-size: 0.9rem;
-  color: #2563eb; /* blue accent */
+  color: #38bdf8; /* same blue as primary button background */
   opacity: 0;
-  transition: opacity 0.25s ease-out;
+  transition: opacity 0.2s ease-out;
 }
 
 /* Shown while remembered value is active */
 .key-memory-inline.visible {
   opacity: 1;
-}
-
-/* One-shot shimmer effect on show */
-.key-memory-inline.shimmer-once {
-  animation: keyMemoryShine 0.9s ease-out;
-}
-
-@keyframes keyMemoryShine {
-  0% {
-    text-shadow: 0 0 0.6rem rgba(37, 99, 235, 0.9);
-  }
-  50% {
-    text-shadow: 0 0 0.3rem rgba(37, 99, 235, 0.6);
-  }
-  100% {
-    text-shadow: none;
-  }
 }
 
 .key-tooltip-bubble {
@@ -804,87 +779,9 @@ button.loading-button {
   position: relative;
 }
 
-/* Key memory sticker */
-.key-memory-badge {
-  position: absolute;
-  top: 0.4rem;
-  right: 0.75rem;
-  padding: 0.25rem 0.7rem;
-  border-radius: 999px;
-  background: #2563eb;          /* blue pill */
-  color: #ffffff;
-  font-size: 0.75rem;
-  font-weight: 600;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
-  opacity: 0;
-  transform: scale(0.7) translateY(-6px);
-  pointer-events: none;         /* never blocks clicks */
-  z-index: 10;
-}
-
 /* Make controls section a positioning context */
 .controls {
   position: relative;
-}
-
-/* Key memory sticker */
-.key-memory-badge {
-  position: absolute;
-  left: 50%;
-  transform: translate(-50%, -20px) scale(0.9);
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(56, 189, 248, 0.96); /* teal-ish */
-  color: #0f172a;
-  font-size: 0.8rem;
-  font-weight: 600;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.35);
-  opacity: 0;
-  pointer-events: none;
-  z-index: 20;
-  transition:
-    opacity 0.3s ease-out,
-    transform 0.3s ease-out;
-}
-
-/* When visible, pop up above the semitone controls */
-.key-memory-badge.visible {
-  opacity: 1;
-  transform: translate(-50%, -34px) scale(1);
-}
-
-/* Extra fade-out motion at the end */
-.key-memory-badge.fade-out {
-  opacity: 0;
-  transform: translate(-50%, -42px) scale(0.95);
-}
-
-/* Shown state with pop + fade animation */
-.key-memory-badge.visible {
-  animation: keyMemoryPop 1.6s ease-out forwards;
-}
-
-@keyframes keyMemoryPop {
-  0% {
-    opacity: 0;
-    transform: scale(0.7) translateY(-6px);
-  }
-  15% {
-    opacity: 1;
-    transform: scale(1.06) translateY(0);
-  }
-  40% {
-    opacity: 1;
-    transform: scale(1.0) translateY(0);
-  }
-  80% {
-    opacity: 1;
-    transform: scale(1.0) translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.9) translateY(-4px);
-  }
 }
 
 button,
