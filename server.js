@@ -238,7 +238,7 @@ const dlProc = spawn('yt-dlp', [
   // Extract audio and convert to MP3 using yt-dlp + ffmpeg
   '--extract-audio',
   '--audio-format', 'mp3',
-  '--audio-quality', '0',          // best quality
+  '--audio-quality', '5',          // smaller file, still good for practice
 
   '-o', filePath,
   url,

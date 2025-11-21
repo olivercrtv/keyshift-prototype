@@ -606,8 +606,17 @@ function onSemitoneChange(value) {
 
 function flashKeyMemoryBadge() {
   if (!keyMemoryBadge) return;
+
+  // Reset classes so repeated calls retrigger the animation cleanly
+  keyMemoryBadge.classList.remove('fade-out');
+  // Force a reflow so browser sees this as a fresh animation
+  void keyMemoryBadge.offsetWidth;
+
   keyMemoryBadge.classList.add('visible');
+
+  // After ~1.6s, start fading out
   setTimeout(() => {
+    keyMemoryBadge.classList.add('fade-out');
     keyMemoryBadge.classList.remove('visible');
   }, 1600);
 }
@@ -803,13 +812,29 @@ function finishSeek() {
     isUserSeeking = false;
     return;
   }
+
   const pct = parseFloat(seekSlider.value) || 0;
   const targetAbs = (pct / 100) * trackDuration;
   isUserSeeking = false;
 
-  // Tell the browser to seek within the MP3 we've already loaded
+  const wasPlaying = !audioElement.paused;
+
+  try {
+    audioElement.pause();
+  } catch (e) {
+    // ignore pause errors
+  }
+
+  // Seek within the already-downloaded MP3
   audioElement.currentTime = targetAbs;
+
+  if (wasPlaying) {
+    audioElement.play().catch((err) => {
+      console.warn('Resume after seek failed:', err);
+    });
+  }
 }
+
 
 // Mouse & touch end
 seekSlider.addEventListener('mouseup', finishSeek);

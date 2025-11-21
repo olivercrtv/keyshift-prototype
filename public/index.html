@@ -54,38 +54,40 @@
         <hr class="section-divider" />
 
         <section class="controls">
-          <label>
-            <span>Key shift (semitones)</span>
-            <input
-              id="semitoneSlider"
-              type="range"
-              min="-12"
-              max="12"
-              value="0"
-              step="1"
-            />
-          </label>
-          <div class="semitone-readout">
-            Current shift: <span id="semitoneValue">0</span> semitones
-          </div>
-            <div class="semitone-buttons">
-  <button class="semitone-btn" data-delta="-2">-2</button>
-  <button class="semitone-btn" data-delta="-1">-1</button>
+  <label>
+    <span>Key shift (semitones)</span>
+    <input
+      id="semitoneSlider"
+      type="range"
+      min="-12"
+      max="12"
+      value="0"
+      step="1"
+    />
+  </label>
+  <div class="semitone-readout">
+    Current shift: <span id="semitoneValue">0</span> semitones
+  </div>
+  <div class="semitone-buttons">
+    <button class="semitone-btn" data-delta="-2">-2</button>
+    <button class="semitone-btn" data-delta="-1">-1</button>
 
-<button
-  id="resetSemitoneButton"
-  class="semitone-btn semitone-reset-btn"
->
-  Original key
-</button>
+    <button
+      id="resetSemitoneButton"
+      class="semitone-btn semitone-reset-btn"
+    >
+      Original key
+    </button>
 
+    <button class="semitone-btn" data-delta="1">+1</button>
+    <button class="semitone-btn" data-delta="2">+2</button>
+  </div>
 
-  <button class="semitone-btn" data-delta="1">+1</button>
-  <button class="semitone-btn" data-delta="2">+2</button>
-</div>
+  <!-- 👇 moved inside controls, will float above slider/buttons -->
+  <div id="keyMemoryBadge" class="key-memory-badge">
+    Remembered your key 🎵
+  </div>
 </section>
-
-<div id="keyMemoryBadge" class="key-memory-badge">Remembered your key 🎵</div>
 
         <section class="status">
           <div id="statusText">Idle</div>
@@ -162,17 +164,15 @@
 
   <hr class="section-divider" />
 
-  <p class="piano-hint">
-  On iPhone, make sure your ringer / silent switch is ON to hear the reference piano.
-</p>
-
       <!-- Piano reference -->
       <section class="piano-section">
   <div class="piano-header">
     <h2 class="piano-title">Piano reference (one octave)</h2>
     <button id="pianoModeButton" class="piano-mode-btn">Toggle</button>
   </div>
-
+    <p class="piano-hint">
+  On iPhone, make sure your ringer / silent switch is ON to hear the reference piano.
+</p>
    <div class="piano-keys" id="pianoKeys">
           <button class="piano-key white" data-midi="60">C</button>
           <button class="piano-key sharp" data-midi="61">C♯</button>
