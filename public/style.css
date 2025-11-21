@@ -671,24 +671,23 @@ button.loading-button {
   min-width: 2.4rem;
 }
 
-/* Make the “Original key” button a bit wider */
 .semitone-reset-btn {
-  padding: 0.4rem 1.1rem;
-  border-radius: 999px;
-  font-weight: 600;
-  border: none;
-  background: #2563eb;        /* same blue as other primary buttons */
+  padding: 0.4rem 0.7rem;
+  min-width: 2.6rem;
+  border-radius: 0.4rem;
+  background: #2563eb; 
   color: #fff;
+  border: none;
   cursor: pointer;
   transition: background 0.15s ease, transform 0.08s ease;
 }
 
 .semitone-reset-btn:hover {
-  background: #1d4ed8;
+  background: #1e4ed8;
 }
 
 .semitone-reset-btn:active {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 
 .key-memory-badge {

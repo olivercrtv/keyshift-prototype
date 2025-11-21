@@ -60,25 +60,16 @@ let loadingTimer = null;
 let loadingSeconds = 0;
 
 function setStatus(text) {
-  // Always show whether pitch engine is active
-  const suffix = pitchShiftingAvailable
-    ? ' [Pitch engine: ON]'
-    : ' [Pitch engine: OFF]';
-
-  statusText.textContent = `${text} ${suffix}`;
+  statusText.textContent = text;
 
   if (text.startsWith('Audio prepared')) {
     statusText.classList.add('status-ready');
-
-    // Auto-scroll status into view (useful on mobile)
-    statusText.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center',
-    });
+    statusText.scrollIntoView({ behavior: 'smooth', block: 'center' });
   } else {
     statusText.classList.remove('status-ready');
   }
 }
+
 
 function extractYouTubeId(url) {
   try {
@@ -171,76 +162,72 @@ function stopActivePianoNote() {
 function playPianoNote(midi, buttonEl) {
   try {
     const Ctor = window.AudioContext || window.webkitAudioContext;
-    if (!Ctor) {
-      console.warn('Web Audio not supported for piano.');
-      return;
-    }
+    if (!Ctor) return;
 
+    // Create piano context lazily on first tap
     if (!pianoCtx) {
       pianoCtx = new Ctor();
+
       pianoMasterGain = pianoCtx.createGain();
-      pianoMasterGain.gain.value = 0.5; // (also where you bump the volume)
+      pianoMasterGain.gain.value = 0.55; // <-- Bump piano volume!
       pianoMasterGain.connect(pianoCtx.destination);
     }
 
-    // Try to resume, but don't wait
+    // iOS requires resume() on gesture
     if (pianoCtx.state === 'suspended') {
       pianoCtx.resume().catch(() => {});
     }
 
     const now = pianoCtx.currentTime;
 
+    // --- Toggle (short note) mode ---
     if (pianoMode === 'toggle') {
       const osc = pianoCtx.createOscillator();
-      const gain = pianoCtx.createGain();
+      const g = pianoCtx.createGain();
 
       osc.type = 'sine';
       osc.frequency.value = midiToFreq(midi);
 
-      const duration = 0.6;
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
-      gain.gain.linearRampToValueAtTime(0, now + duration);
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.35, now + 0.01); // louder attack
+      g.gain.linearRampToValueAtTime(0, now + 0.55);
 
-      osc.connect(gain);
-      gain.connect(pianoMasterGain);
+      osc.connect(g);
+      g.connect(pianoMasterGain);
 
       osc.start(now);
-      osc.stop(now + duration);
+      osc.stop(now + 0.55);
       return;
     }
 
+    // --- Sustain (toggle on/off) mode ---
     if (pianoMode === 'sustain') {
       if (activePianoOsc && activePianoMidi === midi) {
         stopActivePianoNote();
         return;
       }
 
-      if (activePianoOsc) {
-        stopActivePianoNote();
-      }
+      if (activePianoOsc) stopActivePianoNote();
 
       const osc = pianoCtx.createOscillator();
-      const gain = pianoCtx.createGain();
+      const g = pianoCtx.createGain();
 
       osc.type = 'sine';
       osc.frequency.value = midiToFreq(midi);
 
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.25, now + 0.01);
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.35, now + 0.01);
 
-      osc.connect(gain);
-      gain.connect(pianoMasterGain);
+      osc.connect(g);
+      g.connect(pianoMasterGain);
 
       osc.start(now);
 
       activePianoOsc = osc;
-      activePianoGain = gain;
+      activePianoGain = g;
       activePianoMidi = midi;
 
-      if (activePianoButton) {
-        activePianoButton.classList.remove('piano-key-active');
-      }
+      if (activePianoButton) activePianoButton.classList.remove('piano-key-active');
       if (buttonEl) {
         buttonEl.classList.add('piano-key-active');
         activePianoButton = buttonEl;
@@ -908,6 +895,21 @@ document.addEventListener('keydown', (e) => {
       playPauseButton.click();
     }
   }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space') return;
+
+  // Prevent default from scrolling page or activating sliders
+  e.preventDefault();
+
+  // Ignore typing fields only if text is being typed
+  if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
+    // BUT if the input is a slider, let spacebar control playback
+    if (e.target.type !== 'range') return;
+  }
+
+  playPauseButton.click();
 });
 
 // Initial UI state
