@@ -35,7 +35,6 @@ let pitchShiftingAvailable = false;
 let currentSemitone = 0;
 let isContextReady = false;
 
-let currentUrl = '';
 let currentTrackId = null;
 
 let currentVideoId = null;
@@ -45,7 +44,6 @@ let currentLoadToken = 0;
 
 let trackDuration = 0;      // seconds
 let isUserSeeking = false;
-let isSeekInFlight = false;
 
 let pianoMode = 'toggle'; // 'toggle' or 'sustain'
 let activePianoOsc = null;
@@ -490,47 +488,6 @@ async function setupAudioContext() {
 }
 
 /**
- * Prepare a track: ask backend to download & cache audio.
- */
-async function prepareTrack(url) {
-  if (!validateYouTubeUrl(url)) {
-    alert('Please paste a valid YouTube URL.');
-    return null;
-  }
-
-  setStatus('Preparing audio (downloading once)…');
-  currentTimeLabel.textContent = '0:00';
-  durationLabel.textContent = '0:00';
-  seekSlider.value = 0;
-
-  const res = await fetch(`/prepare?url=${encodeURIComponent(url)}`);
-  if (!res.ok) {
-    alert('There was a problem preparing this YouTube link.');
-    setStatus('Error preparing audio');
-    return null;
-  }
-
-  const data = await res.json();
-  if (!data.trackId) {
-    alert('Server did not return a trackId.');
-    setStatus('Error preparing audio');
-    return null;
-  }
-
-  currentTrackId = data.trackId;
-  trackDuration = typeof data.duration === 'number' ? data.duration : 0;
-
-  if (trackDuration > 0) {
-    durationLabel.textContent = formatTime(trackDuration);
-  } else {
-    durationLabel.textContent = '0:00';
-  }
-
-  setStatus('Audio prepared, starting playback…');
-  return currentTrackId;
-}
-
-/**
  * Load & play from the beginning: prepare track then start at 0.
  */
 async function loadAndPlay(url) {
@@ -883,33 +840,27 @@ function decodeHtmlEntities(str) {
 document.getElementById('footerYear').textContent = new Date().getFullYear();
 
 document.addEventListener('keydown', (e) => {
-  // Ignore when typing in an input or textarea
+  if (e.code !== 'Space') return;
+
   const target = e.target;
-  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+  const tag = target && target.tagName;
+  const type = target && target.type;
+
+  // If user is typing in a normal text field (search, URL, etc.), let space insert a space
+  if (tag === 'INPUT' && type !== 'range') {
     return;
   }
 
-  if (e.code === 'Space') {
-    e.preventDefault();
-    if (playPauseButton) {
-      playPauseButton.click();
-    }
+  if (tag === 'TEXTAREA' || (target && target.isContentEditable)) {
+    // Let space behave normally in any text area / contenteditable field
+    return;
   }
-});
 
-document.addEventListener('keydown', (e) => {
-  if (e.code !== 'Space') return;
-
-  // Prevent default from scrolling page or activating sliders
+  // Everywhere else (including sliders): use spacebar as play/pause
   e.preventDefault();
-
-  // Ignore typing fields only if text is being typed
-  if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
-    // BUT if the input is a slider, let spacebar control playback
-    if (e.target.type !== 'range') return;
+  if (playPauseButton) {
+    playPauseButton.click();
   }
-
-  playPauseButton.click();
 });
 
 // Initial UI state
