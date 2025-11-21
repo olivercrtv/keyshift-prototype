@@ -23,7 +23,7 @@ const resetSemitoneButton = document.getElementById('resetSemitoneButton');
 
 const pianoModeButton = document.getElementById('pianoModeButton');
 
-const keyMemoryBadge = document.getElementById('keyMemoryBadge');
+const keyMemoryInline = document.getElementById('keyMemoryInline');
 
 let audioCtx = null;
 let soundtouchNode = null;
@@ -56,6 +56,9 @@ let pianoMasterGain = null;
 
 let loadingTimer = null;
 let loadingSeconds = 0;
+
+let keyMemoryActive = false;
+let suppressKeyMemoryClear = false;
 
 let currentDetectedKey = null; // from server: { tonicIndex, tonicName, mode, confidence, score }
 
@@ -557,17 +560,20 @@ async function loadAndPlay(url) {
     if (currentVideoId) {
       const saved = getStoredSemitone(currentVideoId);
       if (typeof saved === 'number') {
+        suppressKeyMemoryClear = true;
         semitoneSlider.value = String(saved);
         onSemitoneChange(saved);
-          flashKeyMemoryBadge();   // <--- add this line
+        suppressKeyMemoryClear = false;
+        showKeyMemoryInline();
       } else {
-        // Default to 0 if no saved value
         semitoneSlider.value = '0';
+        hideKeyMemoryInline();
         onSemitoneChange(0);
       }
     } else {
       // No video ID; fall back to zero shift
       semitoneSlider.value = '0';
+      hideKeyMemoryInline();
       onSemitoneChange(0);
     }
 
@@ -647,6 +653,12 @@ function onSemitoneChange(value) {
   currentSemitone = value;
   semitoneValue.textContent = value.toString();
 
+  // If the user is changing key after we restored a remembered shift,
+  // hide the "Remembered..." notice (unless we explicitly suppressed it).
+  if (!suppressKeyMemoryClear && keyMemoryActive) {
+    hideKeyMemoryInline();
+  }
+
   if (soundtouchNode) {
     const param = soundtouchNode.parameters.get('pitchSemitones');
     if (param) {
@@ -671,21 +683,18 @@ function onSemitoneChange(value) {
   updateDetectedKey(currentDetectedKey);
 }
 
-function flashKeyMemoryBadge() {
-  if (!keyMemoryBadge) return;
+function showKeyMemoryInline() {
+  if (!keyMemoryInline) return;
+  keyMemoryInline.textContent = ' – Remembered Your Key From Previous Session';
+  keyMemoryInline.classList.add('visible');
+  keyMemoryActive = true;
+}
 
-  // Reset classes so repeated calls retrigger the animation cleanly
-  keyMemoryBadge.classList.remove('fade-out');
-  // Force a reflow so browser sees this as a fresh animation
-  void keyMemoryBadge.offsetWidth;
-
-  keyMemoryBadge.classList.add('visible');
-
-  // After ~1.6s, start fading out
-  setTimeout(() => {
-    keyMemoryBadge.classList.add('fade-out');
-    keyMemoryBadge.classList.remove('visible');
-  }, 1600);
+function hideKeyMemoryInline() {
+  if (!keyMemoryInline) return;
+  keyMemoryInline.classList.remove('visible');
+  keyMemoryInline.textContent = '';
+  keyMemoryActive = false;
 }
 
 // --- UI wiring ---

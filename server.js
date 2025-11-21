@@ -300,12 +300,15 @@ function analyzeKeyFromSamples(samples, sampleRate) {
     return null;
   }
 
-  // Confidence heuristics:
+    // Confidence heuristics:
   // - absolute score (0..1)
   // - separation from 2nd best
   const separation = bestScore - (Number.isFinite(secondBestScore) ? secondBestScore : 0);
+
   let confidence = 'low';
-  if (bestScore >= 0.6 && separation >= 0.08) {
+  // Slightly more forgiving thresholds so typical worship songs
+  // will often show "high" when the key profile is clear.
+  if (bestScore >= 0.5 && separation >= 0.05) {
     confidence = 'high';
   }
 

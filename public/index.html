@@ -66,8 +66,14 @@
     />
   </label>
   <div class="semitone-readout">
-    Current shift: <span id="semitoneValue">0</span> semitones
-  </div>
+  Current shift: <span id="semitoneValue">0</span> semitones
+  <span
+    id="keyMemoryInline"
+    class="key-memory-inline"
+    aria-live="polite"
+    title="When you reopen this song in this browser, we remember the last semitone shift you used."
+  ></span>
+</div>
   <div class="semitone-buttons">
     <button class="semitone-btn" data-delta="-2">-2</button>
     <button class="semitone-btn" data-delta="-1">-1</button>
@@ -102,12 +108,6 @@
 
   <div id="transposedKeyLabel" class="transposed-key-label">
     Current playback key: —
-  </div>
-</section>
-
-  <!-- 👇 moved inside controls, will float above slider/buttons -->
-  <div id="keyMemoryBadge" class="key-memory-badge">
-    Remembered your key 🎵
   </div>
 </section>
 
