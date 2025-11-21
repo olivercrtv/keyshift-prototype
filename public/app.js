@@ -57,6 +57,13 @@ let pianoMasterGain = null;
 let loadingTimer = null;
 let loadingSeconds = 0;
 
+let currentDetectedKey = null; // from server: { tonicIndex, tonicName, mode, confidence, score }
+
+const PITCH_CLASS_NAMES = [
+  'C', 'C#', 'D', 'D#', 'E', 'F',
+  'F#', 'G', 'G#', 'A', 'A#', 'B'
+];
+
 function setStatus(text) {
   statusText.textContent = text;
 
@@ -523,7 +530,7 @@ async function loadAndPlay(url) {
       return;
     }
 
-    const data = await res.json();
+        const data = await res.json();
 
     // If another load started after this one, ignore this result
     if (myToken !== currentLoadToken) {
@@ -531,13 +538,16 @@ async function loadAndPlay(url) {
       return;
     }
 
-currentTrackId = data.trackId;
+    currentTrackId = data.trackId;
     trackDuration = data.duration || 0;
 
     if (trackDuration > 0) {
       durationLabel.textContent = formatTime(trackDuration);
     }
 
+    // Key detection info from the server (may be null)
+    currentDetectedKey = data.key || null;
+    updateDetectedKey(currentDetectedKey);
 
     // NEW: set the audio src once
     audioElement.src = `/audio?trackId=${encodeURIComponent(currentTrackId)}`;
@@ -576,6 +586,60 @@ currentTrackId = data.trackId;
   }
 }
 
+function transposeTonic(tonicIndex, semitones) {
+  const n = ((tonicIndex + semitones) % 12 + 12) % 12;
+  return {
+    index: n,
+    name: PITCH_CLASS_NAMES[n] || 'C',
+  };
+}
+
+/**
+ * Update the UI with detected key + current playback key
+ * based on currentDetectedKey and currentSemitone.
+ */
+function updateDetectedKey(keyInfo) {
+  const labelEl = document.getElementById('detectedKeyLabel');
+  const transposedEl = document.getElementById('transposedKeyLabel');
+  if (!labelEl) return;
+
+  // No key info at all
+  if (!keyInfo || typeof keyInfo.tonicIndex !== 'number') {
+    labelEl.textContent = "Detected key: (couldn't detect key accurately)";
+    if (transposedEl) {
+      transposedEl.textContent = 'Current playback key: —';
+    }
+    return;
+  }
+
+  // If the score is very low, treat it as unreliable
+  if (typeof keyInfo.score === 'number' && keyInfo.score < 0.4) {
+    labelEl.textContent = "Detected key: (couldn't detect key accurately)";
+    if (transposedEl) {
+      transposedEl.textContent = 'Current playback key: —';
+    }
+    return;
+  }
+
+  const tonicName = keyInfo.tonicName || PITCH_CLASS_NAMES[keyInfo.tonicIndex] || 'C';
+  const modeWord = keyInfo.mode === 'minor' ? 'minor' : 'major';
+  const confWord =
+    keyInfo.confidence === 'high' ? 'high confidence' : 'low confidence';
+
+  labelEl.textContent = `Detected key: ${tonicName} ${modeWord} (${confWord})`;
+
+  if (transposedEl) {
+    const shift = currentSemitone || 0;
+    if (shift === 0) {
+      transposedEl.textContent = 'Current playback key: same as original';
+    } else {
+      const t = transposeTonic(keyInfo.tonicIndex, shift);
+      const sign = shift > 0 ? '+' : '';
+      transposedEl.textContent = `Current playback key: ${t.name} ${modeWord} (${sign}${shift} semitones from original)`;
+    }
+  }
+}
+
 /**
  * Handle pitch changes in semitones.
  */
@@ -598,10 +662,13 @@ function onSemitoneChange(value) {
     setStatus(`Idle (shift: ${value} semitones)`);
     }
 
-  // Persist choice for this video (if we know which one it is)
+    // Persist choice for this video (if we know which one it is)
   if (currentVideoId) {
     storeSemitone(currentVideoId, value);
   }
+
+  // Update "current playback key" display based on new semitone shift
+  updateDetectedKey(currentDetectedKey);
 }
 
 function flashKeyMemoryBadge() {
@@ -887,6 +954,22 @@ document.addEventListener('keydown', (e) => {
     playPauseButton.click();
   }
 });
+
+// Detected-key tooltip toggle
+const detectedKeyLabelEl = document.getElementById('detectedKeyLabel');
+const detectedKeyTooltipEl = document.getElementById('detectedKeyTooltip');
+
+if (detectedKeyLabelEl && detectedKeyTooltipEl) {
+  detectedKeyLabelEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    detectedKeyTooltipEl.classList.toggle('visible');
+  });
+
+  // Click anywhere else closes the tooltip
+  document.addEventListener('click', () => {
+    detectedKeyTooltipEl.classList.remove('visible');
+  });
+}
 
 // Initial UI state
 setStatus('Idle');

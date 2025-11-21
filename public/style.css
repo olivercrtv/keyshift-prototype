@@ -67,6 +67,41 @@ input[type='range']:disabled {
   cursor: not-allowed;
 }
 
+.detected-key-row {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.detected-key-label {
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.detected-key-tooltip {
+  display: none;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  max-width: 26rem;
+  background: #111827;
+  color: #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.detected-key-tooltip.visible {
+  display: block;
+}
+
+.transposed-key-label {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
 .primary {
   margin-top: 0.9rem;
   width: 100%;
