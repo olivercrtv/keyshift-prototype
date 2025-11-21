@@ -323,7 +323,7 @@ async function updateTitleVersion() {
     if (!res.ok) return;
     const data = await res.json();
     if (data.version && titleHeading) {
-      titleHeading.textContent = `keyshift-prototype v${data.version}`;
+      titleHeading.textContent = `keyshift.cc (beta v${data.version})`;
     }
   } catch (err) {
     console.warn('Could not fetch version:', err);
