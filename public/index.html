@@ -100,19 +100,21 @@
 
     <div class="detected-key-row">
     <span
-      id="detectedKeyLabel"
-      class="detected-key-label"
-      title="Tap for details about key detection"
-    >
-      Detected key: (not analyzed yet)
-    </span>
+  id="detectedKeyLabel"
+  class="detected-key-label tooltip-trigger"
+  data-tooltip-target="detectedKeyTooltip"
+>
+  Detected key: (not analyzed yet)
+</span>
+
   </div>
 
   <div id="detectedKeyTooltip" class="detected-key-tooltip">
-    Key detection is an estimate based on the audio. It works best for songs
-    that stay in a single clear key. Songs with modulations or complex harmony
-    may be detected less accurately.
-  </div>
+  Key detection is an estimate based on the audio. It works best for songs
+  that stay in a single clear key. Songs with modulations or complex harmony
+  may be detected less accurately.
+</div>
+
 
   <div id="transposedKeyLabel" class="transposed-key-label">
     Current playback key: —

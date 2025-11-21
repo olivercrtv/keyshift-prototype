@@ -23,8 +23,6 @@ const resetSemitoneButton = document.getElementById('resetSemitoneButton');
 
 const pianoModeButton = document.getElementById('pianoModeButton');
 
-const keyMemoryTooltip = document.getElementById('keyMemoryTooltip');
-
 const keyMemoryBadge = document.getElementById('keyMemoryBadge');
 
 // Track when the current song loaded a remembered key
@@ -1004,16 +1002,19 @@ function setupTooltipTrigger(triggerEl) {
 
   triggerEl.addEventListener('click', (e) => {
     e.stopPropagation();
-    const nowVisible = !tooltipEl.classList.contains('visible');
-    // Close all other bubbles of same class if you want
-    document.querySelectorAll('.key-tooltip-bubble').forEach(el => {
-      el.classList.remove('visible');
-    });
-    if (nowVisible) {
-      tooltipEl.classList.add('visible');
+
+    // Special case: key-memory badge should only work when visible
+    if (
+      triggerEl.id === 'keyMemoryBadge' &&
+      !triggerEl.classList.contains('visible')
+    ) {
+      return;
     }
+
+    tooltipEl.classList.toggle('visible');
   });
 
+  // Click anywhere else closes this tooltip
   document.addEventListener('click', () => {
     tooltipEl.classList.remove('visible');
   });

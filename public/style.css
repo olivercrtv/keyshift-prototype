@@ -77,9 +77,13 @@ input[type='range']:disabled {
 
 .detected-key-label {
   cursor: pointer;
-  text-decoration-line: underline;
-  text-decoration-style: dotted;
-  text-underline-offset: 3px;
+}
+
+/* Any element that should show a dotted "info" underline */
+.tooltip-trigger {
+  border-bottom: 1px dotted currentColor;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 /* Any element that should show a dotted "info" underline */
@@ -91,6 +95,18 @@ input[type='range']:disabled {
   cursor: pointer;
 }
 
+.detected-key-tooltip {
+  display: none;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  max-width: 26rem;
+  background: #111827;
+  color: #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+}
+
 .detected-key-tooltip.visible {
   display: block;
 }
@@ -98,14 +114,16 @@ input[type='range']:disabled {
 .key-memory-inline {
   margin-left: 0.5rem;
   font-size: 0.9rem;
-  color: #38bdf8; /* same blue as primary button background */
+  color: #38bdf8;            /* same blue as the primary button */
   opacity: 0;
-  transition: opacity 0.2s ease-out;
+  pointer-events: none;      /* <--- IMPORTANT: no clicks when hidden */
+  transition: opacity 0.25s ease-out;
+  white-space: nowrap;
 }
 
-/* Shown while remembered value is active */
 .key-memory-inline.visible {
   opacity: 1;
+  pointer-events: auto;      /* clickable only when visible */
 }
 
 .key-tooltip-bubble {
