@@ -96,6 +96,59 @@ input[type='range']:disabled {
   display: block;
 }
 
+/* Any element that should show a dotted "info" underline */
+.tooltip-trigger {
+  border-bottom: 1px dotted currentColor;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.key-memory-inline {
+  margin-left: 0.35rem;
+  font-size: 0.9rem;
+  color: #2563eb; /* blue accent */
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+
+/* Shown while remembered value is active */
+.key-memory-inline.visible {
+  opacity: 1;
+}
+
+/* One-shot shimmer effect on show */
+.key-memory-inline.shimmer-once {
+  animation: keyMemoryShine 0.9s ease-out;
+}
+
+@keyframes keyMemoryShine {
+  0% {
+    text-shadow: 0 0 0.6rem rgba(37, 99, 235, 0.9);
+  }
+  50% {
+    text-shadow: 0 0 0.3rem rgba(37, 99, 235, 0.6);
+  }
+  100% {
+    text-shadow: none;
+  }
+}
+
+.key-tooltip-bubble {
+  display: none;
+  margin-top: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #111827;
+  color: #f9fafb;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  max-width: 320px;
+}
+
+.key-tooltip-bubble.visible {
+  display: block;
+}
+
 .transposed-key-label {
   margin-top: 0.25rem;
   font-size: 0.85rem;

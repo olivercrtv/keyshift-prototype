@@ -38,8 +38,6 @@
   </p>
 </section>
 
-</section>
-
         <label class="field">
           <span>YouTube URL</span>
           <input
@@ -68,12 +66,20 @@
   <div class="semitone-readout">
   Current shift: <span id="semitoneValue">0</span> semitones
   <span
-    id="keyMemoryInline"
-    class="key-memory-inline"
-    aria-live="polite"
-    title="When you reopen this song in this browser, we remember the last semitone shift you used."
-  ></span>
+    id="keyMemoryBadge"
+    class="key-memory-inline tooltip-trigger"
+    data-tooltip-target="keyMemoryTooltip"
+  >
+    &nbsp;–&nbsp;Remembered Your Key From Previous Session
+  </span>
 </div>
+
+<!-- Tooltip explaining key memory -->
+<div id="keyMemoryTooltip" class="key-tooltip-bubble">
+  Keyshift remembers your last chosen transposition for each YouTube video on this device.
+  If you clear your browser data or use a different browser/device, saved keys may disappear.
+</div>
+
   <div class="semitone-buttons">
     <button class="semitone-btn" data-delta="-2">-2</button>
     <button class="semitone-btn" data-delta="-1">-1</button>

@@ -23,7 +23,13 @@ const resetSemitoneButton = document.getElementById('resetSemitoneButton');
 
 const pianoModeButton = document.getElementById('pianoModeButton');
 
-const keyMemoryInline = document.getElementById('keyMemoryInline');
+const keyMemoryTooltip = document.getElementById('keyMemoryTooltip');
+
+const keyMemoryBadge = document.getElementById('keyMemoryBadge');
+
+// Track when the current song loaded a remembered key
+let memoryActiveForVideo = false;
+let rememberedSemitoneForVideo = null;
 
 let audioCtx = null;
 let soundtouchNode = null;
@@ -556,25 +562,34 @@ async function loadAndPlay(url) {
     audioElement.src = `/audio?trackId=${encodeURIComponent(currentTrackId)}`;
     audioElement.currentTime = 0;
 
-    // Restore saved semitone for this video if available
+        // Restore saved semitone for this video if available
     if (currentVideoId) {
       const saved = getStoredSemitone(currentVideoId);
       if (typeof saved === 'number') {
-        suppressKeyMemoryClear = true;
         semitoneSlider.value = String(saved);
         onSemitoneChange(saved);
-        suppressKeyMemoryClear = false;
-        showKeyMemoryInline();
+
+        // Mark that this song started from a remembered key
+        rememberedSemitoneForVideo = saved;
+        memoryActiveForVideo = true;
+        flashKeyMemoryBadge();
       } else {
+        // Default to 0 if no saved value
         semitoneSlider.value = '0';
-        hideKeyMemoryInline();
         onSemitoneChange(0);
+
+        rememberedSemitoneForVideo = null;
+        memoryActiveForVideo = false;
+        if (keyMemoryBadge) keyMemoryBadge.classList.remove('visible');
       }
     } else {
       // No video ID; fall back to zero shift
       semitoneSlider.value = '0';
-      hideKeyMemoryInline();
       onSemitoneChange(0);
+
+      rememberedSemitoneForVideo = null;
+      memoryActiveForVideo = false;
+      if (keyMemoryBadge) keyMemoryBadge.classList.remove('visible');
     }
 
     setStatus('Audio prepared. Tap Play to start.');
@@ -653,12 +668,6 @@ function onSemitoneChange(value) {
   currentSemitone = value;
   semitoneValue.textContent = value.toString();
 
-  // If the user is changing key after we restored a remembered shift,
-  // hide the "Remembered..." notice (unless we explicitly suppressed it).
-  if (!suppressKeyMemoryClear && keyMemoryActive) {
-    hideKeyMemoryInline();
-  }
-
   if (soundtouchNode) {
     const param = soundtouchNode.parameters.get('pitchSemitones');
     if (param) {
@@ -666,35 +675,46 @@ function onSemitoneChange(value) {
     }
   }
 
+  // Update status text
   if (audioElement && !audioElement.paused && audioElement.src) {
     setStatus(`Playing (shift: ${value} semitones)`);
   } else if (currentTrackId) {
     setStatus(`Paused (shift: ${value} semitones)`);
   } else {
     setStatus(`Idle (shift: ${value} semitones)`);
-    }
+  }
 
-    // Persist choice for this video (if we know which one it is)
+  // If this song *started* from a remembered key,
+  // hide the label once the user moves away from that value.
+  if (
+    memoryActiveForVideo &&
+    rememberedSemitoneForVideo !== null &&
+    value !== rememberedSemitoneForVideo &&
+    keyMemoryBadge
+  ) {
+    memoryActiveForVideo = false;
+    keyMemoryBadge.classList.remove('visible');
+  }
+
+  // Persist choice for this video (if we know which one it is)
   if (currentVideoId) {
     storeSemitone(currentVideoId, value);
   }
-
-  // Update "current playback key" display based on new semitone shift
-  updateDetectedKey(currentDetectedKey);
 }
 
-function showKeyMemoryInline() {
-  if (!keyMemoryInline) return;
-  keyMemoryInline.textContent = ' – Remembered Your Key From Previous Session';
-  keyMemoryInline.classList.add('visible');
-  keyMemoryActive = true;
-}
+function flashKeyMemoryBadge() {
+  if (!keyMemoryBadge) return;
 
-function hideKeyMemoryInline() {
-  if (!keyMemoryInline) return;
-  keyMemoryInline.classList.remove('visible');
-  keyMemoryInline.textContent = '';
-  keyMemoryActive = false;
+  // Ensure it's visible
+  keyMemoryBadge.classList.add('visible');
+
+  // Add a one-shot shimmer animation class
+  keyMemoryBadge.classList.add('shimmer-once');
+
+  // Remove the shimmer class after animation, but keep it visible
+  setTimeout(() => {
+    keyMemoryBadge.classList.remove('shimmer-once');
+  }, 900);
 }
 
 // --- UI wiring ---
@@ -979,6 +999,34 @@ if (detectedKeyLabelEl && detectedKeyTooltipEl) {
     detectedKeyTooltipEl.classList.remove('visible');
   });
 }
+
+// Generic tooltip wiring for click/tap (mobile-friendly)
+function setupTooltipTrigger(triggerEl) {
+  if (!triggerEl) return;
+  const targetId = triggerEl.getAttribute('data-tooltip-target');
+  if (!targetId) return;
+
+  const tooltipEl = document.getElementById(targetId);
+  if (!tooltipEl) return;
+
+  triggerEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const nowVisible = !tooltipEl.classList.contains('visible');
+    // Close all other bubbles of same class if you want
+    document.querySelectorAll('.key-tooltip-bubble').forEach(el => {
+      el.classList.remove('visible');
+    });
+    if (nowVisible) {
+      tooltipEl.classList.add('visible');
+    }
+  });
+
+  document.addEventListener('click', () => {
+    tooltipEl.classList.remove('visible');
+  });
+}
+
+setupTooltipTrigger(document.getElementById('keyMemoryBadge'));
 
 // Initial UI state
 setStatus('Idle');

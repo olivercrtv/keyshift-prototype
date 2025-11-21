@@ -303,21 +303,25 @@ function analyzeKeyFromSamples(samples, sampleRate) {
     // Confidence heuristics:
   // - absolute score (0..1)
   // - separation from 2nd best
-  const separation = bestScore - (Number.isFinite(secondBestScore) ? secondBestScore : 0);
+  const separation =
+    bestScore - (Number.isFinite(secondBestScore) ? secondBestScore : 0);
 
   let confidence = 'low';
-  // Slightly more forgiving thresholds so typical worship songs
-  // will often show "high" when the key profile is clear.
-  if (bestScore >= 0.5 && separation >= 0.05) {
+
+  // Treat anything above ~0.80 as "high confidence"
+  if (bestScore >= 0.8) {
+    confidence = 'high';
+  } else if (bestScore >= 0.6 && separation >= 0.08) {
+    // still allow "high" if it's clearly better than the 2nd-best key
     confidence = 'high';
   }
 
   return {
-    tonicIndex: bestTonic,                       // 0..11
-    tonicName: PITCH_CLASS_NAMES[bestTonic],     // e.g. "F#"
-    mode: bestMode,                              // "major" or "minor"
-    confidence,                                  // "high" or "low"
-    score: bestScore,                            // raw similarity
+    tonicIndex: bestTonic,
+    tonicName: PITCH_CLASS_NAMES[bestTonic],
+    mode: bestMode,
+    confidence,
+    score: bestScore,
   };
 }
 
