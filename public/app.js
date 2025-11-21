@@ -71,6 +71,12 @@ const PITCH_CLASS_NAMES = [
   'F#', 'G', 'G#', 'A', 'A#', 'B'
 ];
 
+function trackEvent(name, params = {}) {
+  if (typeof window.gtag === 'function') {
+    window.gtag('event', name, params);
+  }
+}
+
 function setStatus(text) {
   statusText.textContent = text;
 
@@ -527,6 +533,12 @@ async function loadAndPlay(url) {
   currentTimeLabel.textContent = '0:00';
   durationLabel.textContent = '0:00';
 
+  // after you've set currentTrackId, trackDuration, etc.
+trackEvent('song_loaded', {
+  event_category: 'playback',
+  value: trackDuration || 0
+});
+
   try {
     const res = await fetch(`/prepare?url=${encodeURIComponent(trimmed)}`);
     if (!res.ok) {
@@ -673,6 +685,11 @@ function onSemitoneChange(value) {
     }
   }
 
+trackEvent('semitone_change', {
+  event_category: 'playback',
+  semitone: value
+});
+
   // Update status text
   if (audioElement && !audioElement.paused && audioElement.src) {
     setStatus(`Playing (shift: ${value} semitones)`);
@@ -810,6 +827,12 @@ if (!audioElement.src) {
   }
   audioElement.src = `/audio?trackId=${encodeURIComponent(currentTrackId)}`;
   audioElement.currentTime = 0;
+}
+
+if (audioElement.paused) {
+  await audioElement.play();
+  trackEvent('play', { event_category: 'playback' });
+  // ...
 }
 
     // Toggle pause / resume
