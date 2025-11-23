@@ -442,11 +442,18 @@ el.addEventListener('click', () => {
  * Create the AudioContext and register the SoundTouch worklet.
  */
 async function setupAudioContext() {
+  // Already created → nothing to do
   if (isContextReady && audioCtx) {
     return;
   }
 
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  if (!Ctor) {
+    setStatus('Web Audio API is not supported in this browser.');
+    return;
+  }
+
+  audioCtx = new Ctor();
 
   // Main gain node for master volume control
   mainGainNode = audioCtx.createGain();
@@ -458,6 +465,7 @@ async function setupAudioContext() {
   // Try AudioWorklet-based SoundTouch first
   if (audioCtx.audioWorklet && audioCtx.audioWorklet.addModule) {
     try {
+      // IMPORTANT: absolute path so it resolves correctly on mobile + HTTPS
       await audioCtx.audioWorklet.addModule('/soundtouch-worklet.js');
 
       soundtouchNode = new AudioWorkletNode(audioCtx, 'soundtouch-processor');
@@ -468,9 +476,9 @@ async function setupAudioContext() {
       // Only create the media source once
       if (!audioSourceNode) {
         audioSourceNode = audioCtx.createMediaElementSource(audioElement);
-        // IMPORTANT: prevent the <audio> element from also playing directly
-        audioElement.muted = true;
       }
+
+      // Route: <audio> → SoundTouch → main gain → speakers
       audioSourceNode.connect(soundtouchNode);
       soundtouchNode.connect(mainGainNode);
 
@@ -478,9 +486,6 @@ async function setupAudioContext() {
       console.log('SoundTouch AudioWorklet enabled');
     } catch (err) {
       console.warn('SoundTouch AudioWorklet not available, falling back:', err);
-      setStatus(
-        'Audio context ready, but advanced pitch shifting is not supported in this browser.'
-      );
     }
   }
 
@@ -488,11 +493,9 @@ async function setupAudioContext() {
   if (!soundtouchSupported) {
     if (!audioSourceNode) {
       audioSourceNode = audioCtx.createMediaElementSource(audioElement);
-      // Still mute the element so we only hear the Web Audio path
-      audioElement.muted = true;
     }
     audioSourceNode.connect(mainGainNode);
-    soundtouchNode = null;
+    soundtouchNode = null; // explicitly note that pitch shift is disabled
   }
 
   isContextReady = true;
@@ -827,7 +830,6 @@ playPauseButton.addEventListener('click', async () => {
       audioElement.currentTime = 0;
     }
 
-    // Single toggle block
     if (audioElement.paused) {
       await audioElement.play();
       trackEvent('play', { event_category: 'playback' });
@@ -843,7 +845,6 @@ playPauseButton.addEventListener('click', async () => {
     console.error('Error in playPauseButton handler:', err);
   }
 });
-
 
 restartButton.addEventListener('click', () => {
   if (!currentTrackId) return;
