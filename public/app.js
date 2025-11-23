@@ -458,7 +458,6 @@ async function setupAudioContext() {
   // Try AudioWorklet-based SoundTouch first
   if (audioCtx.audioWorklet && audioCtx.audioWorklet.addModule) {
     try {
-      // IMPORTANT: absolute path so it resolves correctly on mobile + HTTPS
       await audioCtx.audioWorklet.addModule('/soundtouch-worklet.js');
 
       soundtouchNode = new AudioWorkletNode(audioCtx, 'soundtouch-processor');
@@ -469,6 +468,8 @@ async function setupAudioContext() {
       // Only create the media source once
       if (!audioSourceNode) {
         audioSourceNode = audioCtx.createMediaElementSource(audioElement);
+        // IMPORTANT: prevent the <audio> element from also playing directly
+        audioElement.muted = true;
       }
       audioSourceNode.connect(soundtouchNode);
       soundtouchNode.connect(mainGainNode);
@@ -477,7 +478,6 @@ async function setupAudioContext() {
       console.log('SoundTouch AudioWorklet enabled');
     } catch (err) {
       console.warn('SoundTouch AudioWorklet not available, falling back:', err);
-      // Show a hint in the UI so we know *why* it failed on mobile
       setStatus(
         'Audio context ready, but advanced pitch shifting is not supported in this browser.'
       );
@@ -488,9 +488,11 @@ async function setupAudioContext() {
   if (!soundtouchSupported) {
     if (!audioSourceNode) {
       audioSourceNode = audioCtx.createMediaElementSource(audioElement);
+      // Still mute the element so we only hear the Web Audio path
+      audioElement.muted = true;
     }
     audioSourceNode.connect(mainGainNode);
-    soundtouchNode = null; // explicitly note that pitch shift is disabled
+    soundtouchNode = null;
   }
 
   isContextReady = true;
