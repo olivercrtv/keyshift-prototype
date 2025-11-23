@@ -810,6 +810,7 @@ if (resetSemitoneButton) {
 // Play / Pause button
 playPauseButton.addEventListener('click', async () => {
   try {
+    // Must have a prepared track first
     if (!currentTrackId) {
       alert('Load a song first (use "Load & Play" or search, then tap a result).');
       return;
@@ -820,18 +821,19 @@ playPauseButton.addEventListener('click', async () => {
       await audioCtx.resume();
     }
 
-    // Ensure src is ready on first play
+    // First play after prepare: ensure src exists
     if (!audioElement.src) {
       audioElement.src = `/audio?trackId=${encodeURIComponent(currentTrackId)}`;
       audioElement.currentTime = 0;
     }
 
-    // Toggle
+    // Single toggle block
     if (audioElement.paused) {
       await audioElement.play();
+      trackEvent('play', { event_category: 'playback' });
+
       playPauseButton.textContent = 'Pause';
       setStatus(`Playing (shift: ${currentSemitone} semitones)`);
-      trackEvent('play', { event_category: 'playback' });
     } else {
       audioElement.pause();
       playPauseButton.textContent = 'Play';
@@ -841,6 +843,7 @@ playPauseButton.addEventListener('click', async () => {
     console.error('Error in playPauseButton handler:', err);
   }
 });
+
 
 restartButton.addEventListener('click', () => {
   if (!currentTrackId) return;
